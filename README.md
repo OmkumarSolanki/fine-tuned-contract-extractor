@@ -4,9 +4,9 @@ A reproducible data pipeline and 12-field extraction schema for fine-tuning inst
 
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-83%20passing-green.svg)](#development)
+[![Tests](https://img.shields.io/badge/tests-135%20passing-green.svg)](#development)
 
-> 510 CUAD contracts → 408/51/51 ChatML train/val/test splits, with Llama 3.1 chat-template-aware truncation, deterministic seeding, a 12-field Pydantic schema, and a pure-Python metrics module. 83 unit tests cover the schema, metrics, and pipeline helpers.
+> 510 CUAD contracts → 408/51/51 ChatML train/val/test splits, with Llama 3.1 chat-template-aware truncation, deterministic seeding, a 12-field Pydantic schema, a pure-Python metrics module, and two baseline evaluators (naive prompt + strong prompt). 135 unit tests cover the schema, metrics, pipeline helpers, and baseline evaluators.
 
 ---
 
@@ -34,7 +34,7 @@ Three small, well-tested pieces of code:
 2. **A two-step data pipeline** (`training/`) — turns the public CUAD-QA dataset on Hugging Face into ChatML-formatted JSONL splits suitable for fine-tuning instruction-tuned LLMs.
 3. **A pure-Python metrics module** (`evaluation/metrics.py`) — `is_valid_json`, `field_accuracy`, `parties_f1`, `overall_f1`. Locks down what "correct output" means so any model trained on this dataset can be scored against the same definitions.
 
-Everything is covered by 83 unit tests that run in under a second on CPU, with no network or GPU required.
+Everything is covered by 135 unit tests that run in under a second on CPU, with no network or GPU required.
 
 ### Source data
 
@@ -58,7 +58,7 @@ cp .env.example .env
 # Edit .env: set HF_TOKEN if you want to use the gated meta-llama tokenizer.
 # Without it, the pipeline falls back to the public unsloth/Meta-Llama-3.1-8B-Instruct mirror.
 
-# 3. Run the test suite (83 tests, no network or GPU required)
+# 3. Run the test suite (135 tests, no network or GPU required)
 pytest tests/ -v
 
 # 4. Smoke run (≈10 contracts, ~5 sec)
@@ -139,18 +139,24 @@ fine-tuned-contract-extractor/
 │   ├── ingest_cuad.py           # CUAD-QA → cuad_parsed.jsonl
 │   └── prepare_dataset.py       # cuad_parsed.jsonl → train/val/test splits
 │
-├── evaluation/                  # Pure-Python scoring functions
-│   └── metrics.py               # is_valid_json, parties_f1, overall_f1, ...
+├── evaluation/                  # Scoring + baseline evaluators
+│   ├── metrics.py               # is_valid_json, parties_f1, overall_f1, ...
+│   ├── _runner.py               # Shared helpers + lazy-loaded model+generation
+│   ├── eval_base.py             # Naive-prompt baseline
+│   └── eval_prompt_baseline.py  # Strong-prompt baseline (schema + few-shot)
 │
-├── tests/                       # pytest — 83 tests across 4 files
-│   ├── test_schemas.py          # 13 tests
-│   ├── test_metrics.py          # 27 tests
-│   ├── test_ingest_cuad.py      # 26 tests
-│   └── test_prepare_dataset.py  # 17 tests
+├── tests/                       # pytest — 135 tests across 6 files
+│   ├── test_schemas.py                  # 13 tests
+│   ├── test_metrics.py                  # 27 tests
+│   ├── test_ingest_cuad.py              # 26 tests
+│   ├── test_prepare_dataset.py          # 17 tests
+│   ├── test_eval_base.py                # 26 tests
+│   └── test_eval_prompt_baseline.py     # 26 tests
 │
 └── data/                        # Generated artifacts (gitignored)
     ├── raw/cuad_parsed.jsonl
-    └── processed/{train,val,test}.jsonl
+    ├── processed/{train,val,test}.jsonl
+    └── results/{base,prompt_baseline}_predictions.json   # produced by Phase 5 evals
 ```
 
 See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for a per-module breakdown of responsibilities.
@@ -194,7 +200,7 @@ These are the contract for "correct output" — anything trained on this dataset
 - **[python-dotenv](https://github.com/theskumar/python-dotenv)** — `.env` loading
 - **[tqdm](https://tqdm.github.io/)** — ingest progress bar
 - **[Jinja2](https://jinja.palletsprojects.com/)** — chat-template rendering at the tokenizer level
-- **[pytest](https://docs.pytest.org/)** — test runner (83 tests today)
+- **[pytest](https://docs.pytest.org/)** — test runner (135 tests today)
 - **[ruff](https://docs.astral.sh/ruff/)** — linting (configured in `pyproject.toml`)
 
 ---
