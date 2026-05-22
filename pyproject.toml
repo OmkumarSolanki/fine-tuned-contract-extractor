@@ -1,0 +1,38 @@
+[project]
+name = "contract-extractor"
+version = "0.1.0"
+description = "Reproducible data pipeline and schema for fine-tuning LLMs on CUAD legal contract clause extraction."
+requires-python = ">=3.11"
+
+dependencies = [
+    "pydantic>=2.9.0",
+    "datasets>=3.0.0,<4.0.0",
+    "transformers>=4.46.0",
+    "python-dotenv>=1.0.0",
+    # fuzzy date parsing for ingest_cuad
+    "python-dateutil>=2.9.0",
+    "tqdm>=4.66.0",
+    "jinja2>=3.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3.0",
+    "ruff>=0.7.0",
+]
+
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["extractor*", "training*", "evaluation*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.pytest.ini_options]
+markers = [
+    "network: tests that require internet access (e.g., tokenizer download); run with `pytest -m network`, skip with `pytest -m 'not network'`",
+]
