@@ -60,7 +60,7 @@ Recognized keys:
 pytest tests/ -v
 ```
 
-You should see **83 passing tests** in well under one second.
+You should see **135 passing tests** in well under one second.
 
 ### 3.1 Skipping network-dependent tests
 

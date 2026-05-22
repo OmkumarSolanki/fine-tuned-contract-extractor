@@ -74,11 +74,13 @@ fine-tuned-contract-extractor/
 ├── evaluation/                  # Pure-Python scoring functions
 │   └── metrics.py               # is_valid_json, parties_f1, overall_f1, ...
 │
-├── tests/                       # pytest suite (83 tests)
+├── tests/                       # pytest suite (135 tests)
 │   ├── test_schemas.py
 │   ├── test_metrics.py
 │   ├── test_ingest_cuad.py
-│   └── test_prepare_dataset.py
+│   ├── test_prepare_dataset.py
+│   ├── test_eval_base.py
+│   └── test_eval_prompt_baseline.py
 │
 └── data/                        # Generated artifacts (gitignored)
     ├── raw/cuad_parsed.jsonl
@@ -177,7 +179,7 @@ Pure-Python scoring functions.
 
 ### `tests/`
 
-`pytest`-based suite (83 tests). Tests are split per-file mirroring the source layout. Helper-level tests do not require network or transformers — `transformers` is imported lazily inside `prepare_dataset.load_tokenizer`, and the data pipeline tests use a fake whitespace-tokenizer.
+`pytest`-based suite (135 tests). Tests are split per-file mirroring the source layout. Helper-level tests do not require network or transformers — `transformers` is imported lazily inside `prepare_dataset.load_tokenizer` (and inside `evaluation/_runner.load_model`), and both the data-pipeline tests and the baseline evaluator tests run on CPU with a mocked or whitespace tokenizer.
 
 See [`DEVELOPMENT.md`](./DEVELOPMENT.md) for the test breakdown and how to run them.
 
