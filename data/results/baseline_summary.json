@@ -1,0 +1,48 @@
+{
+  "_headline": "Phase 5 baselines on the 51-contract held-out test set. The reportable, defensible metric is json_validity_rate: naive 0/51 (0%), strong-prompt 6/51 (12%). The unmodified Llama-3.1-8B-Instruct rarely emits output that both parses as JSON and validates against the 12-field schema \u2014 this is the 'before' floor that fine-tuning (Phase 6) aims to beat.",
+  "_per_field_caveat": "The 'per_field_match_rate_CAVEATED' blocks are NOT a headline metric. Schema-invalid predictions are scored as empty extractions; because many CUAD fields are null in the gold, an empty prediction is counted 'correct' on those sparse fields (both-null match), which inflates the per-field and overall numbers \u2014 see docs/DATASET.md on the trivial null-emitting baseline. These per-field scores are only meaningful in the Phase 7 three-way comparison across models that mostly emit valid JSON. Aggregate numbers only \u2014 no CUAD-derived contract text is included.",
+  "model": "meta-llama/Llama-3.1-8B-Instruct (a.k.a. unsloth/Meta-Llama-3.1-8B-Instruct mirror; identical weights)",
+  "decoding": "greedy (do_sample=False), max_new_tokens=2048",
+  "test_set": "data/processed/test.jsonl (51 contracts, deterministic seed=42 split)",
+  "date": "2026-06-06",
+  "naive_baseline": {
+    "n_contracts": 51,
+    "json_valid": 0,
+    "json_validity_rate": 0.0,
+    "per_field_match_rate_CAVEATED": {
+      "document_name": 0.0,
+      "parties": 0.0,
+      "agreement_date": 0.0784,
+      "effective_date": 0.1961,
+      "expiration_date": 0.2157,
+      "governing_law": 0.1569,
+      "renewal_term": 0.7059,
+      "notice_period_to_terminate_renewal": 0.7843,
+      "exclusivity": 0.6471,
+      "non_compete": 0.7647,
+      "cap_on_liability": 0.5294,
+      "uncapped_liability": 0.8039,
+      "overall_f1": 0.4069
+    }
+  },
+  "strong_prompt_baseline": {
+    "n_contracts": 51,
+    "json_valid": 6,
+    "json_validity_rate": 0.1176,
+    "per_field_match_rate_CAVEATED": {
+      "document_name": 0.098,
+      "parties": 0.0645,
+      "agreement_date": 0.1373,
+      "effective_date": 0.1961,
+      "expiration_date": 0.1961,
+      "governing_law": 0.1765,
+      "renewal_term": 0.6863,
+      "notice_period_to_terminate_renewal": 0.7451,
+      "exclusivity": 0.6275,
+      "non_compete": 0.7451,
+      "cap_on_liability": 0.5098,
+      "uncapped_liability": 0.7843,
+      "overall_f1": 0.4139
+    }
+  }
+}

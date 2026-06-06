@@ -208,7 +208,7 @@ Both baseline evaluators have been run against the **51-contract held-out test s
 
 This establishes the **"before" floor**. The next phase fine-tunes the model with QLoRA so it emits clean, schema-exact JSON reliably; the three-way comparison (naive → strong prompt → fine-tuned) and per-field F1 scores will be published here once training is complete.
 
-> Baseline runs are deterministic (greedy decoding), so these numbers reproduce exactly. The raw prediction files (`data/results/*.json`) are gitignored because they embed CUAD-derived text, which this repo does not redistribute; the aggregate numbers above are the reportable result.
+> Baseline runs are deterministic (greedy decoding), so these numbers reproduce exactly. The raw prediction files (`data/results/*_predictions.json`) are gitignored because they embed CUAD-derived text, which this repo does not redistribute; a machine-readable, text-free summary of these results is committed at [`data/results/baseline_summary.json`](data/results/baseline_summary.json).
 
 ---
 
