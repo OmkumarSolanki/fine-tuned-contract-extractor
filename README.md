@@ -4,9 +4,9 @@ A reproducible data pipeline and 12-field extraction schema for fine-tuning inst
 
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-135%20passing-green.svg)](#development)
+[![Tests](https://img.shields.io/badge/tests-149%20passing-green.svg)](#development)
 
-> 510 CUAD contracts → 408/51/51 ChatML train/val/test splits, with Llama 3.1 chat-template-aware truncation, deterministic seeding, a 12-field Pydantic schema, a pure-Python metrics module, and two baseline evaluators (naive prompt + strong prompt). 135 unit tests cover the schema, metrics, pipeline helpers, and baseline evaluators.
+> 510 CUAD contracts → 408/51/51 ChatML train/val/test splits, with Llama 3.1 chat-template-aware truncation, deterministic seeding, a 12-field Pydantic schema, a pure-Python metrics module, two baseline evaluators (naive prompt + strong prompt), and a QLoRA fine-tuning driver (Unsloth + TRL). 149 unit tests cover the schema, metrics, pipeline helpers, baseline evaluators, and the training driver.
 
 ---
 
@@ -18,6 +18,7 @@ A reproducible data pipeline and 12-field extraction schema for fine-tuning inst
 - [Project structure](#project-structure)
 - [The data pipeline at a glance](#the-data-pipeline-at-a-glance)
 - [Metrics module](#metrics-module)
+- [Baseline results](#baseline-results)
 - [Tech stack](#tech-stack)
 - [Documentation](#documentation)
 - [Development](#development)
@@ -34,7 +35,7 @@ Three small, well-tested pieces of code:
 2. **A two-step data pipeline** (`training/`) — turns the public CUAD-QA dataset on Hugging Face into ChatML-formatted JSONL splits suitable for fine-tuning instruction-tuned LLMs.
 3. **A pure-Python metrics module** (`evaluation/metrics.py`) — `is_valid_json`, `field_accuracy`, `parties_f1`, `overall_f1`. Locks down what "correct output" means so any model trained on this dataset can be scored against the same definitions.
 
-Everything is covered by 135 unit tests that run in under a second on CPU, with no network or GPU required.
+Everything is covered by 149 unit tests that run in under a second on CPU, with no network or GPU required.
 
 ### Source data
 
@@ -58,7 +59,7 @@ cp .env.example .env
 # Edit .env: set HF_TOKEN if you want to use the gated meta-llama tokenizer.
 # Without it, the pipeline falls back to the public unsloth/Meta-Llama-3.1-8B-Instruct mirror.
 
-# 3. Run the test suite (135 tests, no network or GPU required)
+# 3. Run the test suite (149 tests, no network or GPU required)
 pytest tests/ -v
 
 # 4. Smoke run (≈10 contracts, ~5 sec)
@@ -135,9 +136,12 @@ fine-tuned-contract-extractor/
 ├── extractor/                   # Pydantic models — the data contract
 │   └── schemas.py
 │
-├── training/                    # Pipelines that produce the JSONL splits
+├── training/                    # Data pipeline + QLoRA fine-tuning
 │   ├── ingest_cuad.py           # CUAD-QA → cuad_parsed.jsonl
-│   └── prepare_dataset.py       # cuad_parsed.jsonl → train/val/test splits
+│   ├── prepare_dataset.py       # cuad_parsed.jsonl → train/val/test splits
+│   ├── train.py                 # QLoRA fine-tuning driver (Unsloth + TRL)
+│   └── configs/
+│       └── llama_8b_qlora.yaml  # training hyperparameters
 │
 ├── evaluation/                  # Scoring + baseline evaluators
 │   ├── metrics.py               # is_valid_json, parties_f1, overall_f1, ...
@@ -145,13 +149,14 @@ fine-tuned-contract-extractor/
 │   ├── eval_base.py             # Naive-prompt baseline
 │   └── eval_prompt_baseline.py  # Strong-prompt baseline (schema + few-shot)
 │
-├── tests/                       # pytest — 135 tests across 6 files
+├── tests/                       # pytest — 149 tests across 7 files
 │   ├── test_schemas.py                  # 13 tests
 │   ├── test_metrics.py                  # 27 tests
 │   ├── test_ingest_cuad.py              # 26 tests
 │   ├── test_prepare_dataset.py          # 17 tests
 │   ├── test_eval_base.py                # 26 tests
-│   └── test_eval_prompt_baseline.py     # 26 tests
+│   ├── test_eval_prompt_baseline.py     # 26 tests
+│   └── test_train.py                    # 14 tests
 │
 └── data/                        # Generated artifacts (gitignored)
     ├── raw/cuad_parsed.jsonl
@@ -190,17 +195,37 @@ These are the contract for "correct output" — anything trained on this dataset
 
 ---
 
+## Baseline results
+
+Both baseline evaluators have been run against the **51-contract held-out test set** using `Llama-3.1-8B-Instruct` in bf16 with greedy decoding (temperature 0) on a single A100 80GB GPU. We report **JSON-validity rate** — the fraction of outputs that parse as JSON *and* validate against the 12-field `ContractExtraction` schema (`is_valid_json` in `evaluation/metrics.py`).
+
+| Baseline | Prompt strategy | JSON-validity (51 contracts) |
+|----------|-----------------|:---:|
+| **Naive** (`eval_base.py`) | "Extract the legal clauses from this contract as JSON." — no schema, no examples, no constraints | **0 / 51 (0%)** |
+| **Strong prompt** (`eval_prompt_baseline.py`) | full 12-field schema description + 3 few-shot examples (from train) + explicit output constraints | **6 / 51 (12%)** |
+
+**What this tells us.** The unmodified base model is poor at strict structured extraction. Even a carefully engineered prompt yields schema-valid JSON only 12% of the time — the common failure modes are wrapping the JSON in markdown fences, adding prose ("Here is the extraction…"), inventing extra keys, or running past the token budget mid-object. The strict metric measures instruction-following, not just comprehension, and it is intentionally not loosened: it is the same yardstick a fine-tuned model will be held to.
+
+This establishes the **"before" floor**. The next phase fine-tunes the model with QLoRA so it emits clean, schema-exact JSON reliably; the three-way comparison (naive → strong prompt → fine-tuned) and per-field F1 scores will be published here once training is complete.
+
+> Baseline runs are deterministic (greedy decoding), so these numbers reproduce exactly. The raw prediction files (`data/results/*.json`) are gitignored because they embed CUAD-derived text, which this repo does not redistribute; the aggregate numbers above are the reportable result.
+
+---
+
 ## Tech stack
 
 - **Python 3.11+**
 - **[Pydantic v2](https://docs.pydantic.dev/)** — schema definition and validation
 - **[HuggingFace Datasets](https://huggingface.co/docs/datasets) `<4.0`** — loading the CUAD-QA mirror (pinned because v4.x dropped script-based loaders; see [ADR-005](docs/DECISIONS.md))
 - **[HuggingFace Transformers](https://huggingface.co/docs/transformers)** — Llama 3.1 chat tokenizer
+- **[Accelerate](https://huggingface.co/docs/accelerate)** — device placement (`device_map="auto"`) for the baseline/evaluation model loads
 - **[python-dateutil](https://dateutil.readthedocs.io/)** — fuzzy date parsing in CUAD ingestion
 - **[python-dotenv](https://github.com/theskumar/python-dotenv)** — `.env` loading
 - **[tqdm](https://tqdm.github.io/)** — ingest progress bar
 - **[Jinja2](https://jinja.palletsprojects.com/)** — chat-template rendering at the tokenizer level
-- **[pytest](https://docs.pytest.org/)** — test runner (135 tests today)
+- **[PyYAML](https://pyyaml.org/)** — loading the training hyperparameter config (`training/configs/llama_8b_qlora.yaml`)
+- **[Unsloth](https://unsloth.ai/) + [TRL](https://huggingface.co/docs/trl) + [PEFT](https://huggingface.co/docs/peft)** — QLoRA fine-tuning (Phase 6). GPU-only; installed on the training box, not part of the base `pip install`.
+- **[pytest](https://docs.pytest.org/)** — test runner (149 tests today)
 - **[ruff](https://docs.astral.sh/ruff/)** — linting (configured in `pyproject.toml`)
 
 ---

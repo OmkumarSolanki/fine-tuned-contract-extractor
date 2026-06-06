@@ -38,5 +38,8 @@ wandb/
 
 other/
 
+# Editor/tooling
+.kiro/
+
 # Keep .gitkeep markers so empty dirs survive in git
 !data/**/.gitkeep
