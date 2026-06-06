@@ -8,6 +8,9 @@ dependencies = [
     "pydantic>=2.9.0",
     "datasets>=3.0.0,<4.0.0",
     "transformers>=4.46.0",
+    # required by the baseline evaluators for device_map="auto" model loading
+    # (transformers delegates accelerated/multi-device placement to accelerate)
+    "accelerate>=0.26.0",
     "python-dotenv>=1.0.0",
     # fuzzy date parsing for ingest_cuad
     "python-dateutil>=2.9.0",
