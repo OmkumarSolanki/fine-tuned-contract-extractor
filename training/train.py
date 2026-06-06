@@ -238,13 +238,15 @@ def main(argv: Optional[list[str]] = None) -> int:
     # 4) Trainer
     sft_config = SFTConfig(
         **build_sft_kwargs(cfg),
-        max_seq_length=int(cfg["model"]["max_seq_length"]),
+        # TRL >=0.20 renamed SFTConfig's `max_seq_length` to `max_length`.
+        max_length=int(cfg["model"]["max_seq_length"]),
         dataset_text_field="text",
         packing=False,
     )
     trainer = SFTTrainer(
         model=model,
-        tokenizer=tokenizer,
+        # TRL >=0.16 removed the `tokenizer=` kwarg in favour of `processing_class=`.
+        processing_class=tokenizer,
         train_dataset=ds["train"],
         eval_dataset=ds["validation"],
         args=sft_config,
