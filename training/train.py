@@ -205,11 +205,16 @@ def main(argv: Optional[list[str]] = None) -> int:
     logger.info("Loaded config from %s", args.config)
 
     # Heavy imports happen here so the module stays CPU-importable for tests.
+    # IMPORTANT: import unsloth *before* trl/transformers/peft. Unsloth patches
+    # those libraries (including tokenizer EOS handling) at import time; if trl
+    # is imported first, SFTTrainer is left with a broken '<EOS_TOKEN>' sentinel
+    # and raises "eos_token ('<EOS_TOKEN>') is not found in the vocabulary".
+    from unsloth import FastLanguageModel  # noqa: PLC0415
+    from unsloth.chat_templates import train_on_responses_only  # noqa: PLC0415
+
     import torch  # noqa: F401, PLC0415  (imported for side effects / availability check)
     from datasets import load_dataset  # noqa: PLC0415
     from trl import SFTConfig, SFTTrainer  # noqa: PLC0415
-    from unsloth import FastLanguageModel  # noqa: PLC0415
-    from unsloth.chat_templates import train_on_responses_only  # noqa: PLC0415
 
     # 1) Base model (4-bit) + tokenizer
     model, tokenizer = _load_model_and_tokenizer(cfg)
