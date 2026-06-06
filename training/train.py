@@ -1,4 +1,4 @@
-"""Phase 6 — QLoRA fine-tuning driver for the contract extractor.
+"""QLoRA fine-tuning driver for the contract extractor.
 
 Fine-tunes Llama 3.1 8B Instruct on the deterministic 408/51/51 ChatML splits
 produced by ``training/prepare_dataset.py``, using **Unsloth** (4-bit base +

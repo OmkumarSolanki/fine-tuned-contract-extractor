@@ -1,4 +1,4 @@
-"""Unit tests for the Phase 6 training driver (``training/train.py``).
+"""Unit tests for the training driver (``training/train.py``).
 
 All tests are CPU-only and import nothing heavy: ``train.py`` keeps ``unsloth``,
 ``trl``, ``torch`` and ``datasets`` behind lazy imports inside ``main`` /

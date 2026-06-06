@@ -1,4 +1,4 @@
-# QLoRA fine-tuning configuration for the contract extractor (Phase 6).
+# QLoRA fine-tuning configuration for the contract extractor.
 #
 # Consumed by training/train.py. Hyperparameters are intentionally explicit so a
 # run is fully reproducible from this file + the deterministic 408/51/51 splits.

@@ -206,7 +206,7 @@ Both baseline evaluators have been run against the **51-contract held-out test s
 
 **What this tells us.** The unmodified base model is poor at strict structured extraction. Even a carefully engineered prompt yields schema-valid JSON only 12% of the time — the common failure modes are wrapping the JSON in markdown fences, adding prose ("Here is the extraction…"), inventing extra keys, or running past the token budget mid-object. The strict metric measures instruction-following, not just comprehension, and it is intentionally not loosened: it is the same yardstick a fine-tuned model will be held to.
 
-This establishes the **"before" floor**. The next phase fine-tunes the model with QLoRA so it emits clean, schema-exact JSON reliably; the three-way comparison (naive → strong prompt → fine-tuned) and per-field F1 scores will be published here once training is complete.
+This establishes the **"before" floor**. The next step — fine-tuning — adapts the model with QLoRA so it emits clean, schema-exact JSON reliably; the three-way comparison (naive → strong prompt → fine-tuned) and per-field F1 scores will be published here once training is complete.
 
 > Baseline runs are deterministic (greedy decoding), so these numbers reproduce exactly. The raw prediction files (`data/results/*_predictions.json`) are gitignored because they embed CUAD-derived text, which this repo does not redistribute; a machine-readable, text-free summary of these results is committed at [`data/results/baseline_summary.json`](data/results/baseline_summary.json).
 
@@ -224,7 +224,7 @@ This establishes the **"before" floor**. The next phase fine-tunes the model wit
 - **[tqdm](https://tqdm.github.io/)** — ingest progress bar
 - **[Jinja2](https://jinja.palletsprojects.com/)** — chat-template rendering at the tokenizer level
 - **[PyYAML](https://pyyaml.org/)** — loading the training hyperparameter config (`training/configs/llama_8b_qlora.yaml`)
-- **[Unsloth](https://unsloth.ai/) + [TRL](https://huggingface.co/docs/trl) + [PEFT](https://huggingface.co/docs/peft)** — QLoRA fine-tuning (Phase 6). GPU-only; installed on the training box, not part of the base `pip install`.
+- **[Unsloth](https://unsloth.ai/) + [TRL](https://huggingface.co/docs/trl) + [PEFT](https://huggingface.co/docs/peft)** — QLoRA fine-tuning. GPU-only; installed on the training box, not part of the base `pip install`.
 - **[pytest](https://docs.pytest.org/)** — test runner (149 tests today)
 - **[ruff](https://docs.astral.sh/ruff/)** — linting (configured in `pyproject.toml`)
 
