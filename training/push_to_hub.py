@@ -1,6 +1,6 @@
 """Publish the QLoRA LoRA adapter to the Hugging Face Hub (Phase 10).
 
-Uploads three things to ``omsolanki/llama-3.1-8b-contract-extractor``:
+Uploads three things to ``solankiom/llama-3.1-8b-contract-extractor``:
 
 1. the LoRA adapter (``adapter_config.json`` + ``adapter_model.safetensors``),
 2. the tokenizer files saved alongside it,
@@ -38,7 +38,7 @@ from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_REPO_ID = "omsolanki/llama-3.1-8b-contract-extractor"
+DEFAULT_REPO_ID = "solankiom/llama-3.1-8b-contract-extractor"
 DEFAULT_ADAPTER_PATH = "checkpoints/contract-extractor/final-adapter"
 DEFAULT_COMPARISON_SUMMARY = "data/results/comparison_summary.json"
 DEFAULT_TRAINING_SUMMARY = "data/results/training_summary.json"
