@@ -1,0 +1,66 @@
+{
+  "_headline": "QLoRA fine-tune of Llama-3.1-8B-Instruct on the 408/51/51 ChatML splits. Best validation eval_loss = 0.2127 at step 100 (epoch ~2 of 3), restored via load_best_model_at_end. Training converged smoothly: train_loss fell from 0.6337 (step 10) to ~0.07-0.10 by the final epoch (run-mean 0.1767). eval_loss reached its minimum at step 100 then rose slightly (0.2291 -> 0.2295), the expected mild overfit that the best-checkpoint logic guards against. Aggregate loss numbers only - no CUAD-derived contract text is included.",
+  "_note": "These are TRAINING/VALIDATION loss metrics, not held-out test-set extraction quality. Schema-valid JSON rate and per-field F1 on the 51-contract test set (the three-way comparison naive -> strong-prompt -> fine-tuned) are produced by the downstream evaluation step and reported separately.",
+  "base_model": "unsloth/llama-3.1-8b-instruct-unsloth-bnb-4bit (4-bit; identical weights to meta-llama/Llama-3.1-8B-Instruct)",
+  "method": "QLoRA (Unsloth 4-bit base + LoRA adapters) via TRL SFTTrainer with assistant-only loss",
+  "date": "2026-06-07",
+  "hardware": "1x NVIDIA A100 80GB PCIe",
+  "data": {
+    "train_examples": 408,
+    "val_examples": 51,
+    "split_seed": 42,
+    "max_seq_length": 8192
+  },
+  "lora": {
+    "r": 16,
+    "alpha": 32,
+    "dropout": 0.05,
+    "target_modules": 7,
+    "trainable_params": 41943040,
+    "total_params": 8072204288,
+    "trainable_pct": 0.52
+  },
+  "optimization": {
+    "epochs": 3,
+    "total_steps": 153,
+    "per_device_train_batch_size": 1,
+    "gradient_accumulation_steps": 8,
+    "effective_batch_size": 8,
+    "optimizer": "adamw_8bit",
+    "learning_rate": 0.0002,
+    "lr_scheduler": "cosine",
+    "warmup_ratio": 0.03,
+    "weight_decay": 0.0,
+    "precision": "bf16"
+  },
+  "results": {
+    "best_eval_loss": 0.2127,
+    "best_eval_step": 100,
+    "best_checkpoint_kept": true,
+    "final_train_loss_mean": 0.1767,
+    "train_runtime_seconds": 3268,
+    "eval_loss_by_step": {
+      "50": 0.2165,
+      "100": 0.2127,
+      "150": 0.2291,
+      "153": 0.2295
+    },
+    "train_loss_by_step": {
+      "10": 0.6337,
+      "20": 0.2145,
+      "30": 0.2366,
+      "40": 0.2315,
+      "50": 0.1857,
+      "60": 0.1409,
+      "70": 0.1651,
+      "80": 0.1328,
+      "90": 0.1154,
+      "100": 0.1579,
+      "110": 0.1055,
+      "120": 0.1031,
+      "130": 0.0693,
+      "140": 0.0942,
+      "150": 0.0991
+    }
+  }
+}
