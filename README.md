@@ -19,6 +19,7 @@ A reproducible data pipeline and 12-field extraction schema for fine-tuning inst
 - [The data pipeline at a glance](#the-data-pipeline-at-a-glance)
 - [Metrics module](#metrics-module)
 - [Baseline results](#baseline-results)
+- [Fine-tuning results](#fine-tuning-results)
 - [Tech stack](#tech-stack)
 - [Documentation](#documentation)
 - [Development](#development)
@@ -206,7 +207,27 @@ Both baseline evaluators have been run against the **51-contract held-out test s
 
 **What this tells us.** The unmodified base model is poor at strict structured extraction. Even a carefully engineered prompt yields schema-valid JSON only 12% of the time — the common failure modes are wrapping the JSON in markdown fences, adding prose ("Here is the extraction…"), inventing extra keys, or running past the token budget mid-object. The strict metric measures instruction-following, not just comprehension, and it is intentionally not loosened: it is the same yardstick a fine-tuned model will be held to.
 
-This establishes the **"before" floor**. The next step — fine-tuning — adapts the model with QLoRA so it emits clean, schema-exact JSON reliably; the three-way comparison (naive → strong prompt → fine-tuned) and per-field F1 scores will be published here once training is complete.
+This establishes the **"before" floor** that fine-tuning aims to beat.
+
+---
+
+## Fine-tuning results
+
+The model has been fine-tuned with **QLoRA** (Unsloth 4-bit base + LoRA adapters — rank 16 on 7 projection modules, **41,943,040 trainable params = 0.52%** of the 8B base) on the 408-example training split with **assistant-only loss**, on a single A100 80GB. Training converged cleanly over 3 epochs (153 steps, ~54 min):
+
+| Metric | Value |
+|--------|-------|
+| Best validation `eval_loss` | **0.2127** (step 100, epoch ~2 — kept via `load_best_model_at_end`) |
+| Final mean `train_loss` | 0.1767 (down from 0.6337 at step 10) |
+| Trainable params | 41,943,040 / 8.07B (**0.52%**) |
+| Effective batch / optimizer | 8 (1 × grad-accum 8) / `adamw_8bit`, cosine LR 2e-4 |
+| Runtime | ~54 min (1 × A100 80GB) |
+
+`eval_loss` bottomed out at step 100 and rose slightly afterward (0.2291 → 0.2295) — the expected mild overfit, which is exactly why the lowest-eval-loss checkpoint is the one kept. Full text-free metrics (loss curve, hyperparameters) are committed at [`data/results/training_summary.json`](data/results/training_summary.json).
+
+The trained LoRA adapter is ~160 MB; following standard practice it is **not** committed to git (binary weights bloat history and exceed GitHub's file-size limit) — it is hosted on the Hugging Face Hub *(link forthcoming)*, with a local backup kept under the gitignored `checkpoints/`.
+
+**Next:** the held-out three-way comparison (naive → strong-prompt → **fine-tuned**) — JSON-validity rate and per-field F1 on the 51-contract test set — will quantify the lift over the baselines above and be published here.
 
 > Baseline runs are deterministic (greedy decoding), so these numbers reproduce exactly. The raw prediction files (`data/results/*_predictions.json`) are gitignored because they embed CUAD-derived text, which this repo does not redistribute; a machine-readable, text-free summary of these results is committed at [`data/results/baseline_summary.json`](data/results/baseline_summary.json).
 
