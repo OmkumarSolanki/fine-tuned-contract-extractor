@@ -240,7 +240,7 @@ The model has been fine-tuned with **QLoRA** (Unsloth 4-bit base + LoRA adapters
 
 `eval_loss` bottomed out at step 100 and rose slightly afterward (0.2291 → 0.2295) — the expected mild overfit, which is exactly why the lowest-eval-loss checkpoint is the one kept. Full text-free metrics (loss curve, hyperparameters) are committed at [`data/results/training_summary.json`](data/results/training_summary.json).
 
-The trained LoRA adapter is ~160 MB; following standard practice it is **not** committed to git (binary weights bloat history and exceed GitHub's file-size limit) — it is hosted on the Hugging Face Hub *(link forthcoming)*, with a local backup kept under the gitignored `checkpoints/`.
+The trained LoRA adapter is ~160 MB; following standard practice it is **not** committed to git (binary weights bloat history and exceed GitHub's file-size limit) — it is hosted on the Hugging Face Hub at [`solankiom/llama-3.1-8b-contract-extractor`](https://huggingface.co/solankiom/llama-3.1-8b-contract-extractor), with a local backup kept under the gitignored `checkpoints/`.
 
 ### Three-way comparison (held-out 51-contract test set)
 
