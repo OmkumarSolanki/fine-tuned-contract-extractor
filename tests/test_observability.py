@@ -165,6 +165,78 @@ class FakeLegacyClient:
         self.flushed += 1
 
 
+class FakeV4Span:
+    """A langfuse>=3 (OTel) span: ``update`` accepts ``level``, plus ``end``."""
+
+    def __init__(self) -> None:
+        self.updated_with: dict | None = None
+        self.level: str | None = None
+        self.ended = False
+
+    def update(self, output=None, level=None, **kwargs):
+        self.updated_with = output
+        self.level = level
+
+    def end(self):
+        self.ended = True
+
+
+class FakeV4Client:
+    """Mimics the langfuse 4.x surface (``start_observation`` + ``flush``).
+
+    This is the surface the pinned ``langfuse>=2.0.0`` actually resolves to
+    today (4.7.1), so it is what the API end-to-end tests exercise.
+    """
+
+    def __init__(self) -> None:
+        self.spans: list[FakeV4Span] = []
+        self.start_observation_calls: list[dict] = []
+        self.flushed = 0
+
+    def start_observation(self, name=None, input=None, metadata=None, **kwargs):
+        self.start_observation_calls.append(
+            {"name": name, "input": input, "metadata": metadata}
+        )
+        span = FakeV4Span()
+        self.spans.append(span)
+        return span
+
+    # Provided so a test can assert start_observation is preferred over these.
+    def start_span(self, **kwargs):  # pragma: no cover - should not be called
+        raise AssertionError("start_observation must be preferred over start_span")
+
+    def flush(self):
+        self.flushed += 1
+
+
+def test_trace_v4_surface():
+    client = FakeV4Client()
+    obs = Observability(client)
+    assert obs.enabled is True
+
+    m = RequestMetrics(input_length_chars=120, output_tokens=60, inference_time_ms=2000.0)
+    obs.trace_extraction(m, input_preview="ACME...", output_preview='{"x":1}', status="ok")
+
+    assert len(client.start_observation_calls) == 1
+    call = client.start_observation_calls[0]
+    assert call["name"] == langfuse_setup.TRACE_NAME
+    assert call["input"] == {"contract_preview": "ACME..."}
+    assert call["metadata"]["tokens_per_second"] == pytest.approx(30.0)
+    span = client.spans[0]
+    assert span.updated_with == {"extraction_preview": '{"x":1}', "status": "ok"}
+    assert span.level == "DEFAULT"
+    assert span.ended is True
+    assert client.flushed == 1
+
+
+def test_trace_v4_error_level_on_invalid_output():
+    client = FakeV4Client()
+    Observability(client).trace_extraction(
+        RequestMetrics(input_length_chars=10), output_preview="not json", status="invalid_output"
+    )
+    assert client.spans[0].level == "ERROR"
+
+
 def test_trace_modern_surface():
     client = FakeModernClient()
     obs = Observability(client)
@@ -253,7 +325,7 @@ def test_extract_records_trace_and_still_succeeds():
             yield valid
 
     # Inject a fake Langfuse client as the process-wide singleton.
-    client = FakeModernClient()
+    client = FakeV4Client()
     langfuse_setup._OBSERVABILITY = Observability(client)
 
     app.dependency_overrides[get_generator] = lambda: FakeGenerator()
@@ -264,8 +336,8 @@ def test_extract_records_trace_and_still_succeeds():
                 json={"contract_text": "This Agreement is between Acme and Beta. " * 3},
             )
         assert resp.status_code == 200
-        assert len(client.start_span_calls) == 1
-        meta = client.start_span_calls[0]["metadata"]
+        assert len(client.start_observation_calls) == 1
+        meta = client.start_observation_calls[0]["metadata"]
         assert meta["output_tokens"] == 42
         assert "inference_time_ms" in meta
         assert "tokens_per_second" in meta

@@ -189,11 +189,17 @@ class Observability:
         output_preview: Optional[str],
         status: str,
     ) -> None:
-        """Send the trace to Langfuse.
+        """Send the trace to Langfuse, across SDK-version surfaces.
 
-        Supports both the modern (``start_span``) and legacy (``trace``) SDK
-        surfaces so a version bump on the optional dependency does not silently
-        stop emitting. Wrapped by :meth:`trace_extraction`'s try/except.
+        Tries, in order:
+
+        - **v3/v4 (OpenTelemetry)** — ``client.start_observation(...)`` returns a
+          span with ``.update(...)`` / ``.end()``;
+        - **older modern (v2.x)** — ``client.start_span(...)`` (same span shape);
+        - **legacy** — top-level ``client.trace(...)``.
+
+        So a version bump on the optional dependency does not silently stop
+        emitting. Wrapped by :meth:`trace_extraction`'s try/except.
         """
         client = self._client
         trace_input = {"contract_preview": input_preview} if input_preview is not None else None
@@ -202,19 +208,22 @@ class Observability:
             if output_preview is not None
             else {"status": status}
         )
+        # Map our status string to a Langfuse observation level for filtering.
+        level = "ERROR" if status not in ("ok", None) else "DEFAULT"
 
-        # Modern SDK (>=2.x): context-managed span carrying metadata.
+        # Langfuse v3/v4 (OTel-based): a root observation == a new trace.
+        start_observation = getattr(client, "start_observation", None)
+        if callable(start_observation):
+            span = start_observation(name=TRACE_NAME, input=trace_input, metadata=metrics)
+            self._finish_span(span, trace_output, level)
+            self.flush()
+            return
+
+        # Older modern SDK (v2.x): start_span with the same span shape.
         start_span = getattr(client, "start_span", None)
         if callable(start_span):
             span = start_span(name=TRACE_NAME, input=trace_input, metadata=metrics)
-            try:
-                update = getattr(span, "update", None)
-                if callable(update):
-                    update(output=trace_output)
-            finally:
-                end = getattr(span, "end", None)
-                if callable(end):
-                    end()
+            self._finish_span(span, trace_output, level)
             self.flush()
             return
 
@@ -228,6 +237,27 @@ class Observability:
                 metadata=metrics,
             )
             self.flush()
+
+    @staticmethod
+    def _finish_span(span: Any, output: dict[str, Any], level: str) -> None:
+        """Set a span's output (with level when supported) and end it.
+
+        Tolerant of SDK differences: ``update`` may or may not accept ``level``,
+        and ``end`` may be absent. Always attempts to ``end`` the span so its
+        duration is recorded and it is queued for flushing.
+        """
+        update = getattr(span, "update", None)
+        try:
+            if callable(update):
+                try:
+                    update(output=output, level=level)
+                except TypeError:
+                    # Older signature without a ``level`` keyword.
+                    update(output=output)
+        finally:
+            end = getattr(span, "end", None)
+            if callable(end):
+                end()
 
     def flush(self) -> None:
         """Flush buffered events to Langfuse. No-op/safe when disabled."""
