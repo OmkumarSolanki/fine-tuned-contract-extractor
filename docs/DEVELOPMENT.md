@@ -60,7 +60,7 @@ Recognized keys:
 pytest tests/ -v
 ```
 
-You should see **180 passing tests** in well under one second.
+You should see **193 passing tests** in well under one second.
 
 ### 3.1 Skipping network-dependent tests
 
@@ -84,6 +84,7 @@ pytest tests/ -v -m "network"          # run only network tests
 | `tests/test_train.py` | 14 | Config loading (+failure modes); SFT-kwargs mapping + best-checkpoint guards; chat-template render flags; Llama 3.1 markers |
 | `tests/test_eval_finetuned.py` | 12 | `load_test_messages` (system+user only, gold excluded); `run_finetuned` end-to-end (mocked `generate_chat`); CLI surface |
 | `tests/test_compare.py` | 19 | `record_to_extraction` (valid/invalid→empty); `load_golds`; `score_model` (validity + F1, id alignment); `build_comparison`; table/CLI |
+| `tests/test_api.py` | 13 | FastAPI endpoints with a mocked generator: `/health`, `/extract` (200, 422 missing/short, 503 no-model, 502 bad-output, 422-precedes-503), `/extract/stream` SSE, train/inference prompt parity |
 
 ### 3.3 Adding a new test
 
