@@ -73,20 +73,24 @@ fine-tuned-contract-extractor/
 │   ├── train.py                 # QLoRA fine-tuning driver (Unsloth + TRL)
 │   └── configs/llama_8b_qlora.yaml
 │
-├── evaluation/                  # Scoring + baseline evaluators
+├── evaluation/                  # Scoring + evaluators
 │   ├── metrics.py               # is_valid_json, parties_f1, overall_f1, ...
 │   ├── _runner.py               # Shared helpers + lazy-loaded model+generation
 │   ├── eval_base.py             # Naive-prompt baseline
-│   └── eval_prompt_baseline.py  # Strong-prompt baseline (schema + few-shot)
+│   ├── eval_prompt_baseline.py  # Strong-prompt baseline (schema + few-shot)
+│   ├── eval_finetuned.py        # Fine-tuned (QLoRA adapter) evaluator
+│   └── compare.py               # Three-way comparison report (validity + F1)
 │
-├── tests/                       # pytest suite (149 tests)
+├── tests/                       # pytest suite (180 tests)
 │   ├── test_schemas.py
 │   ├── test_metrics.py
 │   ├── test_ingest_cuad.py
 │   ├── test_prepare_dataset.py
 │   ├── test_eval_base.py
 │   ├── test_eval_prompt_baseline.py
-│   └── test_train.py
+│   ├── test_train.py
+│   ├── test_eval_finetuned.py
+│   └── test_compare.py
 │
 └── data/                        # Generated artifacts (gitignored)
     ├── raw/cuad_parsed.jsonl
@@ -185,7 +189,7 @@ Pure-Python scoring functions.
 
 ### `tests/`
 
-`pytest`-based suite (149 tests). Tests are split per-file mirroring the source layout. Helper-level tests do not require network or transformers — `transformers` is imported lazily inside `prepare_dataset.load_tokenizer` (and inside `evaluation/_runner.load_model`), and both the data-pipeline tests and the baseline evaluator tests run on CPU with a mocked or whitespace tokenizer. The training driver (`training/train.py`) keeps `unsloth`/`trl`/`torch` behind lazy imports too, so its config/mapping helpers are tested on CPU with no GPU stack.
+`pytest`-based suite (180 tests). Tests are split per-file mirroring the source layout. Helper-level tests do not require network or transformers — `transformers` is imported lazily inside `prepare_dataset.load_tokenizer` (and inside `evaluation/_runner.load_model`), and the data-pipeline tests and all three evaluators (naive, strong-prompt, and fine-tuned) run on CPU with a mocked tokenizer/model. The fine-tuned evaluator (`evaluation/eval_finetuned.py`) and the three-way comparison (`evaluation/compare.py`) keep `unsloth`/`torch` behind lazy imports, and the training driver (`training/train.py`) does the same, so all of their pure-Python helpers are tested on CPU with no GPU stack.
 
 See [`DEVELOPMENT.md`](./DEVELOPMENT.md) for the test breakdown and how to run them.
 

@@ -60,7 +60,7 @@ Recognized keys:
 pytest tests/ -v
 ```
 
-You should see **149 passing tests** in well under one second.
+You should see **180 passing tests** in well under one second.
 
 ### 3.1 Skipping network-dependent tests
 
@@ -79,6 +79,11 @@ pytest tests/ -v -m "network"          # run only network tests
 | `tests/test_metrics.py` | 27 | `is_valid_json`, `field_accuracy`, `parties_f1`, `overall_f1` — happy paths, edge cases, P/R imbalance |
 | `tests/test_ingest_cuad.py` | 26 | All ingest helpers; both id forms (`__Cat_N` and `__Cat`); date parser; dedup; aggregation; text assembly |
 | `tests/test_prepare_dataset.py` | 17 | `compact_json` ordering + UTF-8; `truncate_text` head+tail; `build_messages` validation; deterministic split |
+| `tests/test_eval_base.py` | 26 | `_runner` pure helpers (parse, record shape, loaders, writer); naive prompt; `run_baseline` end-to-end (mocked model) |
+| `tests/test_eval_prompt_baseline.py` | 26 | Schema-description rendering; deterministic few-shot selection (train-only); strong-prompt assembly |
+| `tests/test_train.py` | 14 | Config loading (+failure modes); SFT-kwargs mapping + best-checkpoint guards; chat-template render flags; Llama 3.1 markers |
+| `tests/test_eval_finetuned.py` | 12 | `load_test_messages` (system+user only, gold excluded); `run_finetuned` end-to-end (mocked `generate_chat`); CLI surface |
+| `tests/test_compare.py` | 19 | `record_to_extraction` (valid/invalid→empty); `load_golds`; `score_model` (validity + F1, id alignment); `build_comparison`; table/CLI |
 
 ### 3.3 Adding a new test
 

@@ -4,9 +4,9 @@ A reproducible data pipeline and 12-field extraction schema for fine-tuning inst
 
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-149%20passing-green.svg)](#development)
+[![Tests](https://img.shields.io/badge/tests-180%20passing-green.svg)](#development)
 
-> 510 CUAD contracts → 408/51/51 ChatML train/val/test splits, with Llama 3.1 chat-template-aware truncation, deterministic seeding, a 12-field Pydantic schema, a pure-Python metrics module, two baseline evaluators (naive prompt + strong prompt), and a QLoRA fine-tuning driver (Unsloth + TRL). 149 unit tests cover the schema, metrics, pipeline helpers, baseline evaluators, and the training driver.
+> 510 CUAD contracts → 408/51/51 ChatML train/val/test splits, with Llama 3.1 chat-template-aware truncation, deterministic seeding, a 12-field Pydantic schema, a pure-Python metrics module, three evaluators (naive prompt + strong prompt + fine-tuned adapter) with a three-way comparison report, and a QLoRA fine-tuning driver (Unsloth + TRL). 180 unit tests cover the schema, metrics, pipeline helpers, all three evaluators, the comparison report, and the training driver.
 
 ---
 
@@ -36,7 +36,7 @@ Three small, well-tested pieces of code:
 2. **A two-step data pipeline** (`training/`) — turns the public CUAD-QA dataset on Hugging Face into ChatML-formatted JSONL splits suitable for fine-tuning instruction-tuned LLMs.
 3. **A pure-Python metrics module** (`evaluation/metrics.py`) — `is_valid_json`, `field_accuracy`, `parties_f1`, `overall_f1`. Locks down what "correct output" means so any model trained on this dataset can be scored against the same definitions.
 
-Everything is covered by 149 unit tests that run in under a second on CPU, with no network or GPU required.
+Everything is covered by 180 unit tests that run in under a second on CPU, with no network or GPU required.
 
 ### Source data
 
@@ -60,7 +60,7 @@ cp .env.example .env
 # Edit .env: set HF_TOKEN if you want to use the gated meta-llama tokenizer.
 # Without it, the pipeline falls back to the public unsloth/Meta-Llama-3.1-8B-Instruct mirror.
 
-# 3. Run the test suite (149 tests, no network or GPU required)
+# 3. Run the test suite (180 tests, no network or GPU required)
 pytest tests/ -v
 
 # 4. Smoke run (≈10 contracts, ~5 sec)
@@ -144,25 +144,29 @@ fine-tuned-contract-extractor/
 │   └── configs/
 │       └── llama_8b_qlora.yaml  # training hyperparameters
 │
-├── evaluation/                  # Scoring + baseline evaluators
+├── evaluation/                  # Scoring + evaluators
 │   ├── metrics.py               # is_valid_json, parties_f1, overall_f1, ...
 │   ├── _runner.py               # Shared helpers + lazy-loaded model+generation
 │   ├── eval_base.py             # Naive-prompt baseline
-│   └── eval_prompt_baseline.py  # Strong-prompt baseline (schema + few-shot)
+│   ├── eval_prompt_baseline.py  # Strong-prompt baseline (schema + few-shot)
+│   ├── eval_finetuned.py        # Fine-tuned (QLoRA adapter) evaluator
+│   └── compare.py               # Three-way comparison report (validity + F1)
 │
-├── tests/                       # pytest — 149 tests across 7 files
+├── tests/                       # pytest — 180 tests across 9 files
 │   ├── test_schemas.py                  # 13 tests
 │   ├── test_metrics.py                  # 27 tests
 │   ├── test_ingest_cuad.py              # 26 tests
 │   ├── test_prepare_dataset.py          # 17 tests
 │   ├── test_eval_base.py                # 26 tests
 │   ├── test_eval_prompt_baseline.py     # 26 tests
-│   └── test_train.py                    # 14 tests
+│   ├── test_train.py                    # 14 tests
+│   ├── test_eval_finetuned.py           # 12 tests
+│   └── test_compare.py                  # 19 tests
 │
 └── data/                        # Generated artifacts (gitignored)
     ├── raw/cuad_parsed.jsonl
     ├── processed/{train,val,test}.jsonl
-    └── results/{base,prompt_baseline}_predictions.json   # produced by the baseline evaluators
+    └── results/{base,prompt_baseline,finetuned}_predictions.json   # produced by the evaluators
 ```
 
 See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for a per-module breakdown of responsibilities.
@@ -246,7 +250,7 @@ The trained LoRA adapter is ~160 MB; following standard practice it is **not** c
 - **[Jinja2](https://jinja.palletsprojects.com/)** — chat-template rendering at the tokenizer level
 - **[PyYAML](https://pyyaml.org/)** — loading the training hyperparameter config (`training/configs/llama_8b_qlora.yaml`)
 - **[Unsloth](https://unsloth.ai/) + [TRL](https://huggingface.co/docs/trl) + [PEFT](https://huggingface.co/docs/peft)** — QLoRA fine-tuning. GPU-only; installed on the training box, not part of the base `pip install`.
-- **[pytest](https://docs.pytest.org/)** — test runner (149 tests today)
+- **[pytest](https://docs.pytest.org/)** — test runner (180 tests today)
 - **[ruff](https://docs.astral.sh/ruff/)** — linting (configured in `pyproject.toml`)
 
 ---
