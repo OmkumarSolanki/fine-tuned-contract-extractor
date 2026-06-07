@@ -1,0 +1,66 @@
+{
+  "_headline": "Three-way comparison on the held-out test set. The reportable metric is json_validity_rate; per-field scores are CAVEATED (schema-invalid predictions scored as empty extractions inflate sparse-null fields) and are only meaningful across models that mostly emit valid JSON. Aggregate numbers only - no CUAD-derived contract text is included.",
+  "n_contracts": 51,
+  "models": {
+    "naive": {
+      "n_contracts": 51,
+      "json_valid": 0,
+      "json_validity_rate": 0.0,
+      "per_field_match_rate_CAVEATED": {
+        "document_name": 0.0,
+        "parties": 0.0,
+        "agreement_date": 0.0784313725490196,
+        "effective_date": 0.19607843137254902,
+        "expiration_date": 0.21568627450980393,
+        "governing_law": 0.1568627450980392,
+        "renewal_term": 0.7058823529411765,
+        "notice_period_to_terminate_renewal": 0.7843137254901961,
+        "exclusivity": 0.6470588235294118,
+        "non_compete": 0.7647058823529411,
+        "cap_on_liability": 0.5294117647058824,
+        "uncapped_liability": 0.803921568627451,
+        "overall_f1": 0.40686274509803927
+      }
+    },
+    "strong_prompt": {
+      "n_contracts": 51,
+      "json_valid": 6,
+      "json_validity_rate": 0.11764705882352941,
+      "per_field_match_rate_CAVEATED": {
+        "document_name": 0.09803921568627451,
+        "parties": 0.06448710203035463,
+        "agreement_date": 0.13725490196078433,
+        "effective_date": 0.19607843137254902,
+        "expiration_date": 0.19607843137254902,
+        "governing_law": 0.17647058823529413,
+        "renewal_term": 0.6862745098039216,
+        "notice_period_to_terminate_renewal": 0.7450980392156863,
+        "exclusivity": 0.6274509803921569,
+        "non_compete": 0.7450980392156863,
+        "cap_on_liability": 0.5098039215686274,
+        "uncapped_liability": 0.7843137254901961,
+        "overall_f1": 0.41387065719534005
+      }
+    },
+    "finetuned": {
+      "n_contracts": 51,
+      "json_valid": 49,
+      "json_validity_rate": 0.9607843137254902,
+      "per_field_match_rate_CAVEATED": {
+        "document_name": 0.8627450980392157,
+        "parties": 0.7740932142316225,
+        "agreement_date": 0.8823529411764706,
+        "effective_date": 0.6470588235294118,
+        "expiration_date": 0.47058823529411764,
+        "governing_law": 0.6862745098039216,
+        "renewal_term": 0.803921568627451,
+        "notice_period_to_terminate_renewal": 0.803921568627451,
+        "exclusivity": 0.6666666666666666,
+        "non_compete": 0.7450980392156863,
+        "cap_on_liability": 0.6666666666666666,
+        "uncapped_liability": 0.7450980392156863,
+        "overall_f1": 0.7295404475911974
+      }
+    }
+  }
+}

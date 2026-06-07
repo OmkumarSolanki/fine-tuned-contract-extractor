@@ -231,7 +231,19 @@ The model has been fine-tuned with **QLoRA** (Unsloth 4-bit base + LoRA adapters
 
 The trained LoRA adapter is ~160 MB; following standard practice it is **not** committed to git (binary weights bloat history and exceed GitHub's file-size limit) — it is hosted on the Hugging Face Hub *(link forthcoming)*, with a local backup kept under the gitignored `checkpoints/`.
 
-**Next:** the held-out three-way comparison (naive → strong-prompt → **fine-tuned**) — JSON-validity rate and per-field F1 on the 51-contract test set — will quantify the lift over the baselines above and be published here.
+### Three-way comparison (held-out 51-contract test set)
+
+The fine-tuned adapter was evaluated with the **exact training-format prompt** (greedy decoding, deterministic), and scored against the same yardstick as the baselines:
+
+| Model | JSON-validity | `overall_f1` (CAVEATED) |
+|-------|:---:|:---:|
+| Naive baseline | 0 / 51 (**0%**) | 0.4069 |
+| Strong-prompt baseline | 6 / 51 (**12%**) | 0.4139 |
+| **Fine-tuned (QLoRA)** | **49 / 51 (96%)** | **0.7295** |
+
+**The headline:** fine-tuning lifts schema-valid JSON from **0% / 12% → 96%**. Once the model reliably emits valid JSON, the per-field score becomes meaningful too and jumps to **0.73** — the baselines' ~0.41 was largely the trivial both-null match on sparse fields (see the caveat below), not genuine extraction skill.
+
+> **Read the F1 with the validity rate, never alone.** Schema-invalid predictions are scored as empty extractions; because many CUAD gold fields are null, an empty prediction scores "correct" on those sparse fields, which inflates the baselines' per-field numbers. The metric is only an apples-to-apples extraction-quality measure once a model mostly emits valid JSON — which is exactly what fine-tuning achieves. Full per-field numbers (text-free) are committed at [`data/results/comparison_summary.json`](data/results/comparison_summary.json).
 
 > Baseline runs are deterministic (greedy decoding), so these numbers reproduce exactly. The raw prediction files (`data/results/*_predictions.json`) are gitignored because they embed CUAD-derived text, which this repo does not redistribute; a machine-readable, text-free summary of these results is committed at [`data/results/baseline_summary.json`](data/results/baseline_summary.json).
 
