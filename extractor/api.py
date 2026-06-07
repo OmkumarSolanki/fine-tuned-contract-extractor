@@ -39,11 +39,30 @@ from fastapi.responses import StreamingResponse
 
 from extractor.inference.model_loader import DEFAULT_ADAPTER_PATH
 from extractor.inference.prompt import build_messages
+from extractor.observability import RequestMetrics, get_observability
+from extractor.observability.langfuse_setup import INPUT_PREVIEW_CHARS
 from extractor.schemas import ContractExtraction, ExtractRequest, ExtractResponse
 
 logger = logging.getLogger(__name__)
 
 DEFAULT_MAX_NEW_TOKENS = 2048
+
+
+def _count_input_tokens(generator: Any, messages: list[dict]) -> int | None:
+    """Best-effort prompt token count via the generator's tokenizer.
+
+    Returns ``None`` when the generator exposes no tokenizer (e.g. the mocked
+    generator used in tests) or when tokenization fails — observability metrics
+    are optional and must never break a request.
+    """
+    tokenizer = getattr(generator, "tokenizer", None)
+    if tokenizer is None:
+        return None
+    try:
+        ids = tokenizer.apply_chat_template(messages, tokenize=True, add_generation_prompt=True)
+        return len(ids)
+    except Exception:  # noqa: BLE001
+        return None
 
 
 @asynccontextmanager
@@ -113,13 +132,37 @@ def health() -> dict:
 
 @app.post("/extract", response_model=ExtractResponse)
 def extract(request: ExtractRequest, generator: Any = Depends(get_generator)) -> ExtractResponse:
-    """Synchronous extraction: full generation, then parse + return."""
+    """Synchronous extraction: full generation, then parse + return.
+
+    Emits one Langfuse trace per request (no-op when observability is disabled)
+    with input/output token counts, latency, and throughput. The blocking
+    generate path cannot observe time-to-first-token, so that metric is left to
+    the streaming endpoint.
+    """
     generator = _require_generator(generator)
     messages = build_messages(request.contract_text)
     start = time.perf_counter()
     raw_output, tokens_generated = generator.generate(messages, DEFAULT_MAX_NEW_TOKENS)
     elapsed_ms = (time.perf_counter() - start) * 1000.0
-    extraction = _parse_extraction(raw_output)
+
+    metrics = RequestMetrics(
+        input_length_chars=len(request.contract_text),
+        input_tokens=_count_input_tokens(generator, messages),
+        output_tokens=tokens_generated,
+        inference_time_ms=elapsed_ms,
+    )
+    input_preview = request.contract_text[:INPUT_PREVIEW_CHARS]
+    output_preview = raw_output[:INPUT_PREVIEW_CHARS]
+    try:
+        extraction = _parse_extraction(raw_output)
+    except HTTPException:
+        get_observability().trace_extraction(
+            metrics, input_preview=input_preview, output_preview=output_preview, status="invalid_output"
+        )
+        raise
+    get_observability().trace_extraction(
+        metrics, input_preview=input_preview, output_preview=output_preview, status="ok"
+    )
     return ExtractResponse(
         extraction=extraction,
         inference_time_ms=elapsed_ms,
@@ -133,14 +176,30 @@ def extract_stream(request: ExtractRequest, generator: Any = Depends(get_generat
 
     Emits ``data: <chunk>`` events as tokens arrive, then a final
     ``data: [DONE]`` sentinel. Chunks are JSON-encoded so newlines in the
-    model output don't break the SSE framing.
+    model output don't break the SSE framing. After the stream completes, one
+    Langfuse trace is recorded with time-to-first-token and total latency.
     """
     generator = _require_generator(generator)
     messages = build_messages(request.contract_text)
+    input_tokens = _count_input_tokens(generator, messages)
 
     def event_stream():
+        start = time.perf_counter()
+        ttft_ms: float | None = None
         for chunk in generator.stream(messages, DEFAULT_MAX_NEW_TOKENS):
+            if ttft_ms is None:
+                ttft_ms = (time.perf_counter() - start) * 1000.0
             yield f"data: {json.dumps(chunk)}\n\n"
+        elapsed_ms = (time.perf_counter() - start) * 1000.0
+        metrics = RequestMetrics(
+            input_length_chars=len(request.contract_text),
+            input_tokens=input_tokens,
+            inference_time_ms=elapsed_ms,
+            time_to_first_token_ms=ttft_ms,
+        )
+        get_observability().trace_extraction(
+            metrics, input_preview=request.contract_text[:INPUT_PREVIEW_CHARS], status="ok"
+        )
         yield "data: [DONE]\n\n"
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")

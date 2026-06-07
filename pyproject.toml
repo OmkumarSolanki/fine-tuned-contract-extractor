@@ -21,6 +21,10 @@ dependencies = [
     # Phase 8 — FastAPI serving layer (extractor/api.py)
     "fastapi>=0.115.0",
     "uvicorn[standard]>=0.30.0",
+    # Phase 9 — Langfuse observability (extractor/observability/). Optional at
+    # runtime: the serving layer degrades to a no-op when keys are unset, but
+    # the package is declared so a fresh install can enable tracing.
+    "langfuse>=2.0.0",
 ]
 
 [project.optional-dependencies]
