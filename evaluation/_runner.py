@@ -279,3 +279,163 @@ def run_baseline(
         100 * n_valid / len(records),
     )
     return 0
+
+
+# ---------------------------------------------------------------------------
+# Fine-tuned model evaluation
+# ---------------------------------------------------------------------------
+#
+# The fine-tuned model was trained on the exact ChatML format produced by
+# ``training/prepare_dataset.py`` (system + user turns, assistant-only loss).
+# So unlike the baselines — which wrap the raw contract body in their own
+# engineered prompts — the fine-tuned evaluator must feed the model the *same*
+# system/user turns it saw in training, rendered through the chat template with
+# a generation prompt appended. We therefore read the prompt turns straight out
+# of ``test.jsonl`` rather than reconstructing them, guaranteeing the prompt is
+# byte-identical to training.
+
+# Default location the training driver saves the adapter to (gitignored).
+DEFAULT_ADAPTER_PATH = "checkpoints/contract-extractor/final-adapter"
+
+
+def load_test_messages(
+    path: Path | str,
+    limit: Optional[int] = None,
+) -> list[dict]:
+    """Read ``test.jsonl`` into ``[{contract_id, prompt_messages}, ...]``.
+
+    ``prompt_messages`` is the system + user turns exactly as stored (the gold
+    assistant turn is dropped). This reproduces the training-time prompt for
+    the fine-tuned model with no reconstruction.
+    """
+    path = Path(path)
+    rows: list[dict] = []
+    with path.open("r", encoding="utf-8") as fh:
+        for line in fh:
+            line = line.strip()
+            if not line:
+                continue
+            row = json.loads(line)
+            prompt_messages = [
+                m for m in row["messages"] if m.get("role") != "assistant"
+            ]
+            rows.append(
+                {
+                    "contract_id": row["contract_id"],
+                    "prompt_messages": prompt_messages,
+                }
+            )
+    if limit is not None:
+        rows = rows[:limit]
+    return rows
+
+
+def load_finetuned_model(
+    adapter_path: str = DEFAULT_ADAPTER_PATH,
+    max_seq_length: int = 8192,
+) -> tuple[Any, Any]:
+    """Load the 4-bit base + LoRA adapter via Unsloth, set up for inference.
+
+    Unsloth's ``FastLanguageModel.from_pretrained`` resolves the base model
+    from the adapter's ``adapter_config.json`` (``base_model_name_or_path``)
+    and attaches the adapter in one call. Lazy-imports ``unsloth`` so this
+    module stays CPU-importable for the test suite.
+
+    Returns ``(tokenizer, model)`` to match :func:`load_model`'s ordering.
+    """
+    from unsloth import FastLanguageModel  # noqa: PLC0415
+
+    model, tokenizer = FastLanguageModel.from_pretrained(
+        model_name=adapter_path,
+        max_seq_length=max_seq_length,
+        dtype=None,          # auto-detect bf16 on supported GPUs
+        load_in_4bit=True,
+    )
+    FastLanguageModel.for_inference(model)  # 2x faster generation
+    logger.info("Loaded fine-tuned adapter from %s", adapter_path)
+    return tokenizer, model
+
+
+def generate_chat(
+    tokenizer: Any,
+    model: Any,
+    messages: list[dict],
+    max_new_tokens: int = 2048,
+) -> str:
+    """Greedy chat-template decode. Returns the assistant continuation only.
+
+    Renders ``messages`` through the tokenizer's chat template with
+    ``add_generation_prompt=True`` (so the model continues as the assistant),
+    decodes greedily (``do_sample=False`` → deterministic), and strips the
+    prompt tokens so the return value is exactly what the model generated.
+    """
+    import torch  # noqa: PLC0415
+
+    input_ids = tokenizer.apply_chat_template(
+        messages,
+        tokenize=True,
+        add_generation_prompt=True,
+        return_tensors="pt",
+    ).to(model.device)
+    with torch.no_grad():
+        outputs = model.generate(
+            input_ids=input_ids,
+            max_new_tokens=max_new_tokens,
+            do_sample=False,
+            pad_token_id=tokenizer.eos_token_id,
+        )
+    new_tokens = outputs[0][input_ids.shape[1]:]
+    return tokenizer.decode(new_tokens, skip_special_tokens=True)
+
+
+def run_finetuned(
+    test_path: Path | str,
+    output_path: Path | str,
+    *,
+    adapter_path: str = DEFAULT_ADAPTER_PATH,
+    limit: Optional[int] = None,
+    max_new_tokens: int = 2048,
+    tokenizer: Optional[Any] = None,
+    model: Optional[Any] = None,
+) -> int:
+    """Drive the fine-tuned evaluation end-to-end.
+
+    Loads the test prompts, generates one extraction per contract via the
+    chat-template path, and writes prediction records (including invalid ones)
+    to ``output_path`` in the same shape as the baselines, so ``compare.py``
+    can score all three models identically.
+
+    If ``tokenizer`` and ``model`` are both supplied (the unit-test path), no
+    model load is attempted. Returns ``0`` on success, ``1`` on input error.
+    """
+    examples = load_test_messages(test_path, limit=limit)
+    if not examples:
+        logger.error("No test examples found at %s", test_path)
+        return 1
+
+    if tokenizer is None or model is None:
+        tokenizer, model = load_finetuned_model(adapter_path)
+
+    records: list[dict] = []
+    for i, ex in enumerate(examples, start=1):
+        raw_output = generate_chat(tokenizer, model, ex["prompt_messages"], max_new_tokens)
+        rec = make_prediction_record(ex["contract_id"], raw_output)
+        records.append(rec)
+        logger.info(
+            "[%d/%d] %s — is_valid_json=%s",
+            i,
+            len(examples),
+            ex["contract_id"][:60],
+            rec["is_valid_json"],
+        )
+
+    write_predictions(records, output_path)
+
+    n_valid = sum(1 for r in records if r["is_valid_json"])
+    logger.info(
+        "Wrote %d predictions to %s (json_validity_rate=%.1f%%)",
+        len(records),
+        output_path,
+        100 * n_valid / len(records),
+    )
+    return 0
