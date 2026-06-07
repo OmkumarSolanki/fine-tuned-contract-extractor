@@ -307,6 +307,16 @@ python training/ingest_cuad.py
 python training/prepare_dataset.py
 ```
 
+### How it's tested
+
+**193 unit tests run on CPU in under a second, with no network or GPU.** The strategy is to keep the heavy stack (`unsloth`/`torch`/`transformers`) behind lazy imports so the pure logic is testable in isolation:
+
+- **Pure helpers** (schema, metrics, pipeline parsing, config/SFT-kwargs mapping, the three-way scoring) are tested directly with fixtures.
+- **Model-dependent paths** (the two baselines, the fine-tuned evaluator, and the FastAPI endpoints) are tested with a **mocked model/generator** — the runners and the API accept an injected model, so tests assert the orchestration, prompts, parsing, and HTTP status codes (200/422/502/503) without ever loading weights.
+- **Determinism** is baked in (seed-42 splits, greedy decoding), so results reproduce exactly.
+
+The parts that genuinely need a GPU — the **training run** and the **fine-tuned evaluation** — were executed once on a RunPod A100 80GB, and their *outcomes* (loss curve, three-way metrics) are committed as text-free JSON summaries under [`data/results/`](data/results/). The fine-tuned model was also confirmed serving live over the FastAPI app on the same GPU.
+
 ### Continuous integration
 
 Every push and pull request runs the test suite via GitHub Actions ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)). CI does `pip install -e ".[dev]"` then `pytest -m "not network"`.
