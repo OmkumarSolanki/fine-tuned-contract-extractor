@@ -5,6 +5,9 @@ A reproducible data pipeline and 12-field extraction schema for fine-tuning inst
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Tests](https://img.shields.io/badge/tests-229%20passing-green.svg)](#development)
+[![Hugging Face](https://img.shields.io/badge/%F0%9F%A4%97%20Model-solankiom%2Fllama--3.1--8b--contract--extractor-yellow.svg)](https://huggingface.co/solankiom/llama-3.1-8b-contract-extractor)
+
+> **🤗 Fine-tuned model is live:** download the QLoRA adapter from the Hugging Face Hub → **[solankiom/llama-3.1-8b-contract-extractor](https://huggingface.co/solankiom/llama-3.1-8b-contract-extractor)** (96% schema-valid JSON on the held-out test set; usage snippet on the model card).
 
 > 510 CUAD contracts → 408/51/51 ChatML train/val/test splits, with Llama 3.1 chat-template-aware truncation, deterministic seeding, a 12-field Pydantic schema, a pure-Python metrics module, three evaluators (naive prompt + strong prompt + fine-tuned adapter) with a three-way comparison report, a QLoRA fine-tuning driver (Unsloth + TRL), a FastAPI serving layer (`/health`, `/extract`, `/extract/stream`), and Langfuse per-request observability (latency, throughput, token counts; graceful no-op when unconfigured). 229 unit tests cover the schema, metrics, pipeline helpers, all three evaluators, the comparison report, the training driver, the API, and the observability layer.
 
