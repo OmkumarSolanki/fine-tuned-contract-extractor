@@ -18,6 +18,10 @@ dependencies = [
     "jinja2>=3.0",
     # YAML training-config loading for training/train.py
     "pyyaml>=6.0",
+    # Phase 10 — uploading the LoRA adapter + model card to the HF Hub
+    # (training/push_to_hub.py). Usually present transitively via transformers,
+    # declared here because we import it directly.
+    "huggingface_hub>=0.24.0",
     # Phase 8 — FastAPI serving layer (extractor/api.py)
     "fastapi>=0.115.0",
     "uvicorn[standard]>=0.30.0",
