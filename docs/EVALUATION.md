@@ -147,8 +147,14 @@ remain real, separate targets.
 - **Exact-match is harsh on free-text fields.** `governing_law`, `non_compete`, `cap_on_liability`,
   etc. are long spans; a semantically-correct paraphrase scores 0 under exact match, so §5 likely
   *understates* quality on those fields. A semantic (LLM-judge) metric is planned.
-- **Truncation ceiling.** Long contracts are head+tail truncated to 8000 tokens; a clause living in
-  the dropped middle is unrecoverable by construction, capping achievable recall on some fields.
+- **Truncation ceiling (quantified).** Long contracts are head+tail truncated to 8000 tokens, and
+  **40/51 test contracts were truncated.** Of the long-text gold spans in those contracts, **≈36%
+  (52/144) do not appear verbatim in the truncated input at all** — they were dropped before the
+  model ever saw them (`evaluation.analysis.truncation_survival`). This hits exactly the deep-in-the-
+  document fields hardest: **uncapped_liability ≈56% lost, cap_on_liability ≈52%, non_compete ≈36%,
+  governing_law ≈35%** — which directly explains those fields' lower recall in §6. A large part of
+  the remaining error is therefore an *input* ceiling, not a comprehension gap, motivating retrieval
+  or a long-context model.
 - **Pretraining contamination (disclosed).** CUAD has been publicly available since 2021, and Llama
   3.1 was trained on large web crawls — so the base model **may already have seen these contracts**
   during its original pretraining. We cannot rule this out. It mainly affects the *baseline*

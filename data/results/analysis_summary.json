@@ -10,6 +10,57 @@
     "overlap_val_test": [],
     "clean": true
   },
+  "truncation_ceiling": {
+    "n_contracts": 51,
+    "n_truncated": 40,
+    "truncated_rate": 0.7843,
+    "long_spans_in_truncated": 144,
+    "long_spans_lost": 52,
+    "lost_rate": 0.3611,
+    "by_field": {
+      "expiration_date": {
+        "present": 29,
+        "lost": 10,
+        "lost_rate": 0.3448
+      },
+      "governing_law": {
+        "present": 37,
+        "lost": 13,
+        "lost_rate": 0.3514
+      },
+      "exclusivity": {
+        "present": 14,
+        "lost": 2,
+        "lost_rate": 0.1429
+      },
+      "cap_on_liability": {
+        "present": 21,
+        "lost": 11,
+        "lost_rate": 0.5238
+      },
+      "uncapped_liability": {
+        "present": 9,
+        "lost": 5,
+        "lost_rate": 0.5556
+      },
+      "renewal_term": {
+        "present": 13,
+        "lost": 4,
+        "lost_rate": 0.3077
+      },
+      "notice_period_to_terminate_renewal": {
+        "present": 10,
+        "lost": 3,
+        "lost_rate": 0.3
+      },
+      "non_compete": {
+        "present": 11,
+        "lost": 4,
+        "lost_rate": 0.3636
+      }
+    },
+    "_note": "lost = gold long-text span not found verbatim in the truncated input; an approximate upper bound on truncation-driven loss for these fields."
+  },
   "always_null_floor": {
     "document_name": 0.0,
     "parties": 0.0,

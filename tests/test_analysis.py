@@ -16,6 +16,7 @@ from evaluation.analysis import (
     mcnemar,
     null_confusion,
     per_example_overall,
+    truncation_survival,
     wilson_interval,
 )
 from evaluation.metrics import overall_f1
@@ -204,6 +205,45 @@ def test_failure_mode_breakdown_counts_only_invalids():
     assert out["by_reason"]["empty"] == 1
     # most-common-first ordering
     assert list(out["by_reason"])[0] == "markdown_fence"
+
+
+# --------------------------------------------------------------------------- truncation
+
+
+def _row(user, gold):
+    return {
+        "messages": [
+            {"role": "system", "content": "s"},
+            {"role": "user", "content": user},
+            {"role": "assistant", "content": json.dumps(gold)},
+        ]
+    }
+
+
+def test_truncation_survival_counts_lost_and_present():
+    marker = "\n[...TRUNCATED...]\n"
+    long_present = "This Agreement shall be governed by the laws of the State of New York."
+    long_lost = "The exclusivity clause that lived in the dropped middle section of the document."
+    rows = [
+        # truncated: governing_law present in input, exclusivity absent → 1 present-kept, 1 lost
+        _row(f"head {long_present} {marker} tail", {"governing_law": long_present, "exclusivity": long_lost}),
+        # not truncated → ignored entirely
+        _row("short contract text", {"governing_law": long_present}),
+    ]
+    out = truncation_survival(rows, marker=marker)
+    assert out["n_contracts"] == 2
+    assert out["n_truncated"] == 1
+    assert out["long_spans_in_truncated"] == 2
+    assert out["long_spans_lost"] == 1
+    assert out["lost_rate"] == 0.5
+    assert out["by_field"]["exclusivity"]["lost"] == 1
+    assert out["by_field"]["governing_law"]["lost"] == 0
+
+
+def test_truncation_survival_no_truncated_contracts():
+    out = truncation_survival([_row("short", {"governing_law": "x" * 40})], marker="\n[...TRUNCATED...]\n")
+    assert out["n_truncated"] == 0
+    assert out["lost_rate"] is None
 
 
 def _write_jsonl(path, ids):

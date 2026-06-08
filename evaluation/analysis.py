@@ -301,6 +301,81 @@ def failure_mode_breakdown(records: list[dict]) -> dict:
 
 
 # ---------------------------------------------------------------------------
+# Truncation ceiling — can the gold span even survive head+tail truncation?
+# ---------------------------------------------------------------------------
+
+# The marker `prepare_dataset.truncate_text` inserts between the kept head and tail.
+DEFAULT_TRUNC_MARKER = "\n[...TRUNCATED...]\n"
+
+# Long, verbatim-span fields (dates/parties are normalized, so a substring check
+# isn't meaningful for them; these clause fields are copied spans).
+DEFAULT_LONG_FIELDS = (
+    "expiration_date",
+    "governing_law",
+    "renewal_term",
+    "notice_period_to_terminate_renewal",
+    "exclusivity",
+    "non_compete",
+    "cap_on_liability",
+    "uncapped_liability",
+)
+
+
+def truncation_survival(
+    test_rows: list[dict],
+    marker: str = DEFAULT_TRUNC_MARKER,
+    long_fields: tuple[str, ...] = DEFAULT_LONG_FIELDS,
+    min_len: int = 25,
+) -> dict:
+    """Measure how often a gold long-text span is *missing* from the truncated input.
+
+    ``test_rows`` are raw test JSONL rows (``messages`` = system/user/assistant).
+    A contract is "truncated" if the user message contains ``marker``. For each
+    truncated contract, each gold long-text field (≥ ``min_len`` chars) is checked
+    for a **verbatim** presence in the (truncated) user input; absence means the
+    model could not have extracted it — a hard ceiling, not a model error.
+
+    ``lost`` is an approximate *upper bound* (a verbatim miss can also be a
+    whitespace/normalization difference even when the span is present).
+    """
+    n_total = len(test_rows)
+    n_trunc = 0
+    present = lost = 0
+    per_field: dict[str, dict] = {}
+    for row in test_rows:
+        user = row["messages"][1]["content"]
+        gold = json.loads(row["messages"][-1]["content"])
+        if marker not in user:
+            continue
+        n_trunc += 1
+        for f in long_fields:
+            v = gold.get(f)
+            if isinstance(v, str) and len(v) >= min_len:
+                present += 1
+                pf = per_field.setdefault(f, {"present": 0, "lost": 0})
+                pf["present"] += 1
+                if v not in user:
+                    lost += 1
+                    pf["lost"] += 1
+    return {
+        "n_contracts": n_total,
+        "n_truncated": n_trunc,
+        "truncated_rate": (n_trunc / n_total) if n_total else 0.0,
+        "long_spans_in_truncated": present,
+        "long_spans_lost": lost,
+        "lost_rate": (lost / present) if present else None,
+        "by_field": {
+            f: {**c, "lost_rate": (c["lost"] / c["present"]) if c["present"] else None}
+            for f, c in per_field.items()
+        },
+        "_note": (
+            "lost = gold long-text span not found verbatim in the truncated input; an "
+            "approximate upper bound on truncation-driven loss for these fields."
+        ),
+    }
+
+
+# ---------------------------------------------------------------------------
 # Leakage / split-integrity
 # ---------------------------------------------------------------------------
 
@@ -403,6 +478,10 @@ def main(argv: Optional[list[str]] = None) -> int:
         return 1
     golds = [g for _, g in golds_pairs]
 
+    # Raw rows (with the truncated user message) for the truncation-ceiling check.
+    with Path(args.test).open("r", encoding="utf-8") as fh:
+        test_rows = [json.loads(line) for line in fh if line.strip()]
+
     model_paths = {
         "naive": args.base,
         "strong_prompt": args.prompt,
@@ -442,6 +521,7 @@ def main(argv: Optional[list[str]] = None) -> int:
         ),
         "n_contracts": len(golds),
         "leakage": check_leakage(args.train, args.val, args.test),
+        "truncation_ceiling": truncation_survival(test_rows),
         "always_null_floor": floor,
         "models": models,
         "significance": significance,
