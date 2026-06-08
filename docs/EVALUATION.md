@@ -117,6 +117,29 @@ per-contract validity:
 
 The lift is overwhelmingly significant, not a sampling fluke.
 
+### Hand-audit of the worst predictions
+
+Reading the 5 lowest-scoring fine-tuned predictions field-by-field (pred vs. gold) separates real
+model errors from scoring artifacts:
+
+- **Roughly half the "misses" are exact-match artifacts or CUAD label noise, not model mistakes.**
+  The model's `parties` lists are frequently *cleaner* than the gold — CUAD golds often include span
+  fragments such as *"Hereinafter individually referred to as the Party..."* or an entity with a
+  trailing comma, which the model sensibly omits, yet exact/set match scores it wrong. Long clause
+  fields (`governing_law`, `cap_on_liability`) are often a faithful **paraphrase** scored 0.
+- **Genuine model errors do occur** and are worth fixing: wrong `governing_law` *jurisdiction* on 2
+  contracts (e.g. predicting one country's law where the gold names another), and a wrong
+  `document_name`/document-type on 1.
+- **Hallucination is visible** on the sparse clause fields: inventing `renewal_term`, `non_compete`,
+  or `exclusivity` text where the gold is null — consistent with the 10.4% rate in §6.
+- **Truncation** shows up directly: the single worst case was an essentially empty generation, and
+  one `governing_law` was cut off mid-sentence — both the 2048-token-budget failure from §5.
+
+**Implication:** the exact-match `overall_f1` is a **lower bound** on true quality — a semantic
+(LLM-judge) metric is expected to raise the fine-tuned score, because many "wrong" answers are
+correct paraphrases. The genuine jurisdiction/document-type errors and the ~10% hallucination rate
+remain real, separate targets.
+
 ## 8. Known limitations (honest)
 
 - **Small test set (n=51).** The CIs above are wide by construction (validity 96% spans 87–99%).
