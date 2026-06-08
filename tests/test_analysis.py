@@ -11,6 +11,8 @@ from evaluation.analysis import (
     always_null_floor,
     bootstrap_ci,
     check_leakage,
+    classify_failure,
+    failure_mode_breakdown,
     mcnemar,
     null_confusion,
     per_example_overall,
@@ -153,6 +155,55 @@ def test_null_confusion_rates_when_only_true_negatives():
 
 
 # --------------------------------------------------------------------------- leakage
+
+
+# --------------------------------------------------------------------------- failure modes
+
+
+def test_classify_failure_empty():
+    assert classify_failure("") == "empty"
+    assert classify_failure("   \n ") == "empty"
+
+
+def test_classify_failure_markdown_fence():
+    assert classify_failure('```json\n{"document_name": "A"}\n```') == "markdown_fence"
+
+
+def test_classify_failure_no_json_object():
+    assert classify_failure("I cannot extract this contract.") == "no_json_object"
+
+
+def test_classify_failure_truncated():
+    assert classify_failure('{"document_name": "A", "parties": ["X"') == "truncated"
+
+
+def test_classify_failure_malformed_json():
+    assert classify_failure('{"document_name": "A" "parties": []}') == "malformed_json"
+
+
+def test_classify_failure_prose_around_json():
+    valid = json.dumps({f: None for f in ContractExtraction.model_fields} | {"parties": []})
+    assert classify_failure(f"Here is the answer: {valid} Hope this helps!") == "prose_around_json"
+
+
+def test_classify_failure_schema_mismatch():
+    # Clean JSON, but `parties` must be a list — wrong type fails schema validation.
+    assert classify_failure('{"parties": 123}') == "schema_mismatch"
+
+
+def test_failure_mode_breakdown_counts_only_invalids():
+    records = [
+        {"is_valid_json": True, "raw_output": "{}"},
+        {"is_valid_json": False, "raw_output": ""},
+        {"is_valid_json": False, "raw_output": "```\n{}\n```"},
+        {"is_valid_json": False, "raw_output": "```\n{}\n```"},
+    ]
+    out = failure_mode_breakdown(records)
+    assert out["n_invalid"] == 3
+    assert out["by_reason"]["markdown_fence"] == 2
+    assert out["by_reason"]["empty"] == 1
+    # most-common-first ordering
+    assert list(out["by_reason"])[0] == "markdown_fence"
 
 
 def _write_jsonl(path, ids):

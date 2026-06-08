@@ -238,6 +238,69 @@ def _confusion_rates(tp: int, fp: int, fn: int, tn: int) -> dict:
 
 
 # ---------------------------------------------------------------------------
+# Failure-mode breakdown — *why* an invalid output was invalid
+# ---------------------------------------------------------------------------
+
+
+def classify_failure(raw_output: str) -> str:
+    """Best-effort single reason a raw model output failed schema-valid JSON.
+
+    Checked in priority order so each invalid output gets one primary bucket:
+
+    - ``empty``             nothing (or only whitespace) produced.
+    - ``markdown_fence``    wrapped in a ```` ``` ```` code fence (parse fails as-is).
+    - ``no_json_object``    prose with no ``{`` at all.
+    - ``truncated``         an opening ``{`` but no closing ``}`` (ran out of budget).
+    - ``malformed_json``    has both braces but doesn't parse.
+    - ``prose_around_json`` valid JSON object, but with extra text before/after it.
+    - ``schema_mismatch``   parses as JSON but fails the 12-field schema.
+    - ``valid_but_flagged`` parses + validates cleanly (classifier/loader disagree).
+    """
+    s = (raw_output or "").strip()
+    if not s:
+        return "empty"
+    if "```" in s:
+        return "markdown_fence"
+    first, last = s.find("{"), s.rfind("}")
+    if first == -1:
+        return "no_json_object"
+    if last == -1:
+        return "truncated"
+    candidate = s[first : last + 1]
+    try:
+        data = json.loads(candidate)
+    except json.JSONDecodeError:
+        return "malformed_json"
+    if s[:first].strip() or s[last + 1 :].strip():
+        return "prose_around_json"
+    try:
+        ContractExtraction.model_validate(data)
+    except Exception:  # noqa: BLE001
+        return "schema_mismatch"
+    return "valid_but_flagged"
+
+
+def failure_mode_breakdown(records: list[dict]) -> dict:
+    """Tally :func:`classify_failure` over the *invalid* records of one model.
+
+    ``records`` are raw prediction dicts (``raw_output`` + ``is_valid_json``).
+    Returns the invalid count and a reason→count map (most common first).
+    """
+    counts: dict[str, int] = {}
+    n_invalid = 0
+    for rec in records:
+        if rec.get("is_valid_json"):
+            continue
+        n_invalid += 1
+        reason = classify_failure(rec.get("raw_output", ""))
+        counts[reason] = counts.get(reason, 0) + 1
+    return {
+        "n_invalid": n_invalid,
+        "by_reason": dict(sorted(counts.items(), key=lambda kv: -kv[1])),
+    }
+
+
+# ---------------------------------------------------------------------------
 # Leakage / split-integrity
 # ---------------------------------------------------------------------------
 
@@ -358,6 +421,7 @@ def main(argv: Optional[list[str]] = None) -> int:
             pred_exts.append(ext)
             valid_flags.append(is_valid)
         models[key] = analyze_model(pred_exts, golds, valid_flags, seed=args.seed)
+        models[key]["failure_modes"] = failure_mode_breakdown(list(preds_by_id.values()))
         correctness[key] = valid_flags
 
     # Always-null floor + significance of fine-tuned vs each baseline (on validity).

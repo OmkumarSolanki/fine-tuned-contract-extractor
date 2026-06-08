@@ -89,6 +89,24 @@ fields × 51 contracts:
 (This measures *commitment* — present vs. null — not whether the extracted text is verbatim
 correct; value accuracy is the per-field match in §5.)
 
+### Why the invalid outputs failed (failure modes)
+
+Categorizing every *invalid* output by its primary failure reason
+(`evaluation.analysis.failure_mode_breakdown`) reframes the "0% / 12%" baseline numbers:
+
+| Model | Invalid | Breakdown |
+|-------|---------|-----------|
+| Naive | 51/51 | **100% markdown fence** — the model produced JSON but wrapped it in ```` ``` ```` |
+| Strong-prompt | 45/51 | 19 malformed JSON · 17 prose around the JSON · 9 markdown fence |
+| Fine-tuned | 2/51 | 2 truncated (ran out of the 2048-token budget mid-JSON) |
+
+The takeaway: the base model's failures are overwhelmingly **formatting**, not comprehension — the
+naive baseline *always* emitted JSON and merely fenced it. This is exactly the kind of error that
+grammar/constrained decoding fixes **without fine-tuning**, which is why a constrained-decoding
+baseline (see §8) is the right next comparison. The fine-tuned model's only 2 failures are
+token-budget truncation — addressable with a larger budget or a serve-time JSON guarantee, not a
+comprehension gap.
+
 ## 7. Is the improvement real, or luck?
 
 With n=51, we test the *difference*, not just each score, using **McNemar's paired test** on
