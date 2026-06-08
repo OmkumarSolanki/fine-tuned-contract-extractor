@@ -464,6 +464,9 @@ def main(argv: Optional[list[str]] = None) -> int:
     parser = argparse.ArgumentParser(description="Deep analysis of evaluation results.")
     parser.add_argument("--base", default="data/results/base_predictions.json")
     parser.add_argument("--prompt", default="data/results/prompt_baseline_predictions.json")
+    parser.add_argument(
+        "--constrained", default="data/results/constrained_baseline_predictions.json"
+    )
     parser.add_argument("--finetuned", default="data/results/finetuned_predictions.json")
     parser.add_argument("--train", default="data/processed/train.jsonl")
     parser.add_argument("--val", default="data/processed/val.jsonl")
@@ -485,6 +488,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     model_paths = {
         "naive": args.base,
         "strong_prompt": args.prompt,
+        "constrained_prompt": args.constrained,
         "finetuned": args.finetuned,
     }
 
@@ -507,7 +511,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     floor = always_null_floor(golds)
     significance = {}
     if "finetuned" in correctness:
-        for base_key in ("naive", "strong_prompt"):
+        for base_key in ("naive", "strong_prompt", "constrained_prompt"):
             if base_key in correctness:
                 significance[f"finetuned_vs_{base_key}_validity"] = mcnemar(
                     correctness["finetuned"], correctness[base_key]
