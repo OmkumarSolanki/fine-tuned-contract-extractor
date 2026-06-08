@@ -1,0 +1,488 @@
+{
+  "_headline": "Deep analysis: validity with Wilson CI, overall_f1 with bootstrap CI, per-field match, null/hallucination confusion, the always-null floor, and McNemar significance of the fine-tuned vs. baseline difference. Aggregate numbers only — no CUAD text.",
+  "n_contracts": 51,
+  "leakage": {
+    "n_train": 408,
+    "n_val": 51,
+    "n_test": 51,
+    "overlap_train_test": [],
+    "overlap_train_val": [],
+    "overlap_val_test": [],
+    "clean": true
+  },
+  "always_null_floor": {
+    "document_name": 0.0,
+    "parties": 0.0,
+    "agreement_date": 0.0784,
+    "effective_date": 0.1961,
+    "expiration_date": 0.2157,
+    "governing_law": 0.1569,
+    "renewal_term": 0.7059,
+    "notice_period_to_terminate_renewal": 0.7843,
+    "exclusivity": 0.6471,
+    "non_compete": 0.7647,
+    "cap_on_liability": 0.5294,
+    "uncapped_liability": 0.8039,
+    "overall_f1": 0.4069
+  },
+  "models": {
+    "naive": {
+      "n_contracts": 51,
+      "json_valid": 0,
+      "json_validity_rate": 0.0,
+      "json_validity_ci95": [
+        0.0,
+        0.07
+      ],
+      "overall_f1": 0.4069,
+      "overall_f1_ci95": [
+        0.3595,
+        0.4542
+      ],
+      "per_field": {
+        "document_name": 0.0,
+        "parties": 0.0,
+        "agreement_date": 0.0784,
+        "effective_date": 0.1961,
+        "expiration_date": 0.2157,
+        "governing_law": 0.1569,
+        "renewal_term": 0.7059,
+        "notice_period_to_terminate_renewal": 0.7843,
+        "exclusivity": 0.6471,
+        "non_compete": 0.7647,
+        "cap_on_liability": 0.5294,
+        "uncapped_liability": 0.8039,
+        "overall_f1": 0.4069
+      },
+      "null_confusion": {
+        "document_name": {
+          "tp": 0,
+          "fp_hallucination": 0,
+          "fn_miss": 51,
+          "tn": 0,
+          "precision": null,
+          "recall": 0.0,
+          "hallucination_rate": null
+        },
+        "parties": {
+          "tp": 0,
+          "fp_hallucination": 0,
+          "fn_miss": 51,
+          "tn": 0,
+          "precision": null,
+          "recall": 0.0,
+          "hallucination_rate": null
+        },
+        "agreement_date": {
+          "tp": 0,
+          "fp_hallucination": 0,
+          "fn_miss": 47,
+          "tn": 4,
+          "precision": null,
+          "recall": 0.0,
+          "hallucination_rate": 0.0
+        },
+        "effective_date": {
+          "tp": 0,
+          "fp_hallucination": 0,
+          "fn_miss": 41,
+          "tn": 10,
+          "precision": null,
+          "recall": 0.0,
+          "hallucination_rate": 0.0
+        },
+        "expiration_date": {
+          "tp": 0,
+          "fp_hallucination": 0,
+          "fn_miss": 40,
+          "tn": 11,
+          "precision": null,
+          "recall": 0.0,
+          "hallucination_rate": 0.0
+        },
+        "governing_law": {
+          "tp": 0,
+          "fp_hallucination": 0,
+          "fn_miss": 43,
+          "tn": 8,
+          "precision": null,
+          "recall": 0.0,
+          "hallucination_rate": 0.0
+        },
+        "renewal_term": {
+          "tp": 0,
+          "fp_hallucination": 0,
+          "fn_miss": 15,
+          "tn": 36,
+          "precision": null,
+          "recall": 0.0,
+          "hallucination_rate": 0.0
+        },
+        "notice_period_to_terminate_renewal": {
+          "tp": 0,
+          "fp_hallucination": 0,
+          "fn_miss": 11,
+          "tn": 40,
+          "precision": null,
+          "recall": 0.0,
+          "hallucination_rate": 0.0
+        },
+        "exclusivity": {
+          "tp": 0,
+          "fp_hallucination": 0,
+          "fn_miss": 18,
+          "tn": 33,
+          "precision": null,
+          "recall": 0.0,
+          "hallucination_rate": 0.0
+        },
+        "non_compete": {
+          "tp": 0,
+          "fp_hallucination": 0,
+          "fn_miss": 12,
+          "tn": 39,
+          "precision": null,
+          "recall": 0.0,
+          "hallucination_rate": 0.0
+        },
+        "cap_on_liability": {
+          "tp": 0,
+          "fp_hallucination": 0,
+          "fn_miss": 24,
+          "tn": 27,
+          "precision": null,
+          "recall": 0.0,
+          "hallucination_rate": 0.0
+        },
+        "uncapped_liability": {
+          "tp": 0,
+          "fp_hallucination": 0,
+          "fn_miss": 10,
+          "tn": 41,
+          "precision": null,
+          "recall": 0.0,
+          "hallucination_rate": 0.0
+        },
+        "_aggregate": {
+          "tp": 0,
+          "fp_hallucination": 0,
+          "fn_miss": 363,
+          "tn": 249,
+          "precision": null,
+          "recall": 0.0,
+          "hallucination_rate": 0.0
+        }
+      }
+    },
+    "strong_prompt": {
+      "n_contracts": 51,
+      "json_valid": 6,
+      "json_validity_rate": 0.1176,
+      "json_validity_ci95": [
+        0.055,
+        0.2338
+      ],
+      "overall_f1": 0.4139,
+      "overall_f1_ci95": [
+        0.3683,
+        0.4593
+      ],
+      "per_field": {
+        "document_name": 0.098,
+        "parties": 0.0645,
+        "agreement_date": 0.1373,
+        "effective_date": 0.1961,
+        "expiration_date": 0.1961,
+        "governing_law": 0.1765,
+        "renewal_term": 0.6863,
+        "notice_period_to_terminate_renewal": 0.7451,
+        "exclusivity": 0.6275,
+        "non_compete": 0.7451,
+        "cap_on_liability": 0.5098,
+        "uncapped_liability": 0.7843,
+        "overall_f1": 0.4139
+      },
+      "null_confusion": {
+        "document_name": {
+          "tp": 6,
+          "fp_hallucination": 0,
+          "fn_miss": 45,
+          "tn": 0,
+          "precision": 1.0,
+          "recall": 0.1176,
+          "hallucination_rate": null
+        },
+        "parties": {
+          "tp": 6,
+          "fp_hallucination": 0,
+          "fn_miss": 45,
+          "tn": 0,
+          "precision": 1.0,
+          "recall": 0.1176,
+          "hallucination_rate": null
+        },
+        "agreement_date": {
+          "tp": 5,
+          "fp_hallucination": 1,
+          "fn_miss": 42,
+          "tn": 3,
+          "precision": 0.8333,
+          "recall": 0.1064,
+          "hallucination_rate": 0.25
+        },
+        "effective_date": {
+          "tp": 4,
+          "fp_hallucination": 2,
+          "fn_miss": 37,
+          "tn": 8,
+          "precision": 0.6667,
+          "recall": 0.0976,
+          "hallucination_rate": 0.2
+        },
+        "expiration_date": {
+          "tp": 3,
+          "fp_hallucination": 2,
+          "fn_miss": 37,
+          "tn": 9,
+          "precision": 0.6,
+          "recall": 0.075,
+          "hallucination_rate": 0.1818
+        },
+        "governing_law": {
+          "tp": 5,
+          "fp_hallucination": 0,
+          "fn_miss": 38,
+          "tn": 8,
+          "precision": 1.0,
+          "recall": 0.1163,
+          "hallucination_rate": 0.0
+        },
+        "renewal_term": {
+          "tp": 1,
+          "fp_hallucination": 1,
+          "fn_miss": 14,
+          "tn": 35,
+          "precision": 0.5,
+          "recall": 0.0667,
+          "hallucination_rate": 0.0278
+        },
+        "notice_period_to_terminate_renewal": {
+          "tp": 0,
+          "fp_hallucination": 2,
+          "fn_miss": 11,
+          "tn": 38,
+          "precision": 0.0,
+          "recall": 0.0,
+          "hallucination_rate": 0.05
+        },
+        "exclusivity": {
+          "tp": 2,
+          "fp_hallucination": 1,
+          "fn_miss": 16,
+          "tn": 32,
+          "precision": 0.6667,
+          "recall": 0.1111,
+          "hallucination_rate": 0.0303
+        },
+        "non_compete": {
+          "tp": 1,
+          "fp_hallucination": 1,
+          "fn_miss": 11,
+          "tn": 38,
+          "precision": 0.5,
+          "recall": 0.0833,
+          "hallucination_rate": 0.0256
+        },
+        "cap_on_liability": {
+          "tp": 2,
+          "fp_hallucination": 1,
+          "fn_miss": 22,
+          "tn": 26,
+          "precision": 0.6667,
+          "recall": 0.0833,
+          "hallucination_rate": 0.037
+        },
+        "uncapped_liability": {
+          "tp": 2,
+          "fp_hallucination": 1,
+          "fn_miss": 8,
+          "tn": 40,
+          "precision": 0.6667,
+          "recall": 0.2,
+          "hallucination_rate": 0.0244
+        },
+        "_aggregate": {
+          "tp": 37,
+          "fp_hallucination": 12,
+          "fn_miss": 326,
+          "tn": 237,
+          "precision": 0.7551,
+          "recall": 0.1019,
+          "hallucination_rate": 0.0482
+        }
+      }
+    },
+    "finetuned": {
+      "n_contracts": 51,
+      "json_valid": 49,
+      "json_validity_rate": 0.9608,
+      "json_validity_ci95": [
+        0.8678,
+        0.9892
+      ],
+      "overall_f1": 0.7295,
+      "overall_f1_ci95": [
+        0.666,
+        0.7882
+      ],
+      "per_field": {
+        "document_name": 0.8627,
+        "parties": 0.7741,
+        "agreement_date": 0.8824,
+        "effective_date": 0.6471,
+        "expiration_date": 0.4706,
+        "governing_law": 0.6863,
+        "renewal_term": 0.8039,
+        "notice_period_to_terminate_renewal": 0.8039,
+        "exclusivity": 0.6667,
+        "non_compete": 0.7451,
+        "cap_on_liability": 0.6667,
+        "uncapped_liability": 0.7451,
+        "overall_f1": 0.7295
+      },
+      "null_confusion": {
+        "document_name": {
+          "tp": 49,
+          "fp_hallucination": 0,
+          "fn_miss": 2,
+          "tn": 0,
+          "precision": 1.0,
+          "recall": 0.9608,
+          "hallucination_rate": null
+        },
+        "parties": {
+          "tp": 49,
+          "fp_hallucination": 0,
+          "fn_miss": 2,
+          "tn": 0,
+          "precision": 1.0,
+          "recall": 0.9608,
+          "hallucination_rate": null
+        },
+        "agreement_date": {
+          "tp": 46,
+          "fp_hallucination": 2,
+          "fn_miss": 1,
+          "tn": 2,
+          "precision": 0.9583,
+          "recall": 0.9787,
+          "hallucination_rate": 0.5
+        },
+        "effective_date": {
+          "tp": 35,
+          "fp_hallucination": 2,
+          "fn_miss": 6,
+          "tn": 8,
+          "precision": 0.9459,
+          "recall": 0.8537,
+          "hallucination_rate": 0.2
+        },
+        "expiration_date": {
+          "tp": 37,
+          "fp_hallucination": 3,
+          "fn_miss": 3,
+          "tn": 8,
+          "precision": 0.925,
+          "recall": 0.925,
+          "hallucination_rate": 0.2727
+        },
+        "governing_law": {
+          "tp": 41,
+          "fp_hallucination": 1,
+          "fn_miss": 2,
+          "tn": 7,
+          "precision": 0.9762,
+          "recall": 0.9535,
+          "hallucination_rate": 0.125
+        },
+        "renewal_term": {
+          "tp": 12,
+          "fp_hallucination": 3,
+          "fn_miss": 3,
+          "tn": 33,
+          "precision": 0.8,
+          "recall": 0.8,
+          "hallucination_rate": 0.0833
+        },
+        "notice_period_to_terminate_renewal": {
+          "tp": 9,
+          "fp_hallucination": 4,
+          "fn_miss": 2,
+          "tn": 36,
+          "precision": 0.6923,
+          "recall": 0.8182,
+          "hallucination_rate": 0.1
+        },
+        "exclusivity": {
+          "tp": 14,
+          "fp_hallucination": 4,
+          "fn_miss": 4,
+          "tn": 29,
+          "precision": 0.7778,
+          "recall": 0.7778,
+          "hallucination_rate": 0.1212
+        },
+        "non_compete": {
+          "tp": 5,
+          "fp_hallucination": 3,
+          "fn_miss": 7,
+          "tn": 36,
+          "precision": 0.625,
+          "recall": 0.4167,
+          "hallucination_rate": 0.0769
+        },
+        "cap_on_liability": {
+          "tp": 16,
+          "fp_hallucination": 1,
+          "fn_miss": 8,
+          "tn": 26,
+          "precision": 0.9412,
+          "recall": 0.6667,
+          "hallucination_rate": 0.037
+        },
+        "uncapped_liability": {
+          "tp": 3,
+          "fp_hallucination": 3,
+          "fn_miss": 7,
+          "tn": 38,
+          "precision": 0.5,
+          "recall": 0.3,
+          "hallucination_rate": 0.0732
+        },
+        "_aggregate": {
+          "tp": 316,
+          "fp_hallucination": 26,
+          "fn_miss": 47,
+          "tn": 223,
+          "precision": 0.924,
+          "recall": 0.8705,
+          "hallucination_rate": 0.1044
+        }
+      }
+    }
+  },
+  "significance": {
+    "finetuned_vs_naive_validity": {
+      "b": 49,
+      "c": 0,
+      "statistic": 47.0204,
+      "p_value": 0.0
+    },
+    "finetuned_vs_strong_prompt_validity": {
+      "b": 43,
+      "c": 0,
+      "statistic": 41.0233,
+      "p_value": 0.0
+    }
+  }
+}
