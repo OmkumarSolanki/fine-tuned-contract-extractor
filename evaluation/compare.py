@@ -53,6 +53,7 @@ logger = logging.getLogger(__name__)
 MODEL_LABELS = {
     "naive": "Naive baseline",
     "strong_prompt": "Strong-prompt baseline",
+    "constrained_prompt": "Constrained-decoding baseline",
     "finetuned": "Fine-tuned (QLoRA)",
 }
 
@@ -231,6 +232,14 @@ def main(argv: Optional[list[str]] = None) -> int:
         help="Strong-prompt predictions. Default: data/results/prompt_baseline_predictions.json",
     )
     parser.add_argument(
+        "--constrained",
+        default="data/results/constrained_baseline_predictions.json",
+        help=(
+            "Constrained-decoding baseline predictions (skipped if absent). "
+            "Default: data/results/constrained_baseline_predictions.json"
+        ),
+    )
+    parser.add_argument(
         "--finetuned",
         default="data/results/finetuned_predictions.json",
         help="Fine-tuned predictions. Default: data/results/finetuned_predictions.json",
@@ -250,6 +259,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     prediction_paths = {
         "naive": args.base,
         "strong_prompt": args.prompt,
+        "constrained_prompt": args.constrained,
         "finetuned": args.finetuned,
     }
 
