@@ -1,0 +1,40 @@
+# Single-service local orchestration for the contract-extractor API.
+#
+#   docker compose up --build
+#
+# Requires an NVIDIA GPU + the NVIDIA Container Toolkit on the host (the model
+# is GPU-only). Reads HF_TOKEN / LANGFUSE_* / EXTRACTOR_API_KEY from .env
+# (copy .env.example → .env first). By default the service pulls the published
+# LoRA adapter straight from the Hugging Face Hub, so no local weights needed.
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: contract-extractor:latest
+    container_name: contract-extractor
+    ports:
+      - "8000:8000"
+    # Pulls HF_TOKEN, LANGFUSE_*, EXTRACTOR_API_KEY, EXTRACTOR_ADAPTER_PATH, etc.
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      # Hub adapter by default; override in .env to serve a different adapter.
+      EXTRACTOR_ADAPTER_PATH: ${EXTRACTOR_ADAPTER_PATH:-solankiom/llama-3.1-8b-contract-extractor}
+    # GPU access via the NVIDIA Container Toolkit.
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 90s
+      retries: 3
+    restart: unless-stopped

@@ -54,7 +54,10 @@ fine-tuned-contract-extractor/
 ├── pyproject.toml               # Python deps + metadata
 ├── .env.example                 # Template for secrets
 ├── .gitignore                   # Includes data/**, .env, other/
-├── .github/workflows/ci.yml     # Lint + test on push/PR
+├── .github/workflows/ci.yml     # Lint + test + docker-build on push/PR
+├── Dockerfile                   # Multi-stage CUDA serving image
+├── .dockerignore
+├── docker-compose.yml           # Single-service local orchestration (GPU)
 │
 ├── docs/                        # ◀── You are here
 │   ├── ARCHITECTURE.md          # This file
@@ -63,6 +66,10 @@ fine-tuned-contract-extractor/
 │   ├── SCHEMA.md                # The 12 fields, with legal context
 │   ├── DEVELOPMENT.md           # Dev setup, testing, contributing
 │   └── DECISIONS.md             # Locked architectural decisions
+│
+├── scripts/                     # Operational scripts (Phase 11)
+│   ├── run_local_inference.py   # Load adapter + run one extraction
+│   └── benchmark_latency.py     # Latency / TTFT / throughput percentiles
 │
 ├── extractor/                   # Pydantic models — the data contract
 │   └── schemas.py
@@ -81,7 +88,7 @@ fine-tuned-contract-extractor/
 │   ├── eval_finetuned.py        # Fine-tuned (QLoRA adapter) evaluator
 │   └── compare.py               # Three-way comparison report (validity + F1)
 │
-├── tests/                       # pytest suite (193 tests)
+├── tests/                       # pytest suite (254 tests)
 │   ├── test_schemas.py
 │   ├── test_metrics.py
 │   ├── test_ingest_cuad.py
@@ -189,7 +196,7 @@ Pure-Python scoring functions.
 
 ### `tests/`
 
-`pytest`-based suite (193 tests). Tests are split per-file mirroring the source layout. Helper-level tests do not require network or transformers — `transformers` is imported lazily inside `prepare_dataset.load_tokenizer` (and inside `evaluation/_runner.load_model`), and the data-pipeline tests and all three evaluators (naive, strong-prompt, and fine-tuned) run on CPU with a mocked tokenizer/model. The fine-tuned evaluator (`evaluation/eval_finetuned.py`) and the three-way comparison (`evaluation/compare.py`) keep `unsloth`/`torch` behind lazy imports, and the training driver (`training/train.py`) does the same, so all of their pure-Python helpers are tested on CPU with no GPU stack.
+`pytest`-based suite (254 tests). Tests are split per-file mirroring the source layout. Helper-level tests do not require network or transformers — `transformers` is imported lazily inside `prepare_dataset.load_tokenizer` (and inside `evaluation/_runner.load_model`), and the data-pipeline tests and all three evaluators (naive, strong-prompt, and fine-tuned) run on CPU with a mocked tokenizer/model. The fine-tuned evaluator (`evaluation/eval_finetuned.py`) and the three-way comparison (`evaluation/compare.py`) keep `unsloth`/`torch` behind lazy imports, and the training driver (`training/train.py`) does the same, so all of their pure-Python helpers are tested on CPU with no GPU stack.
 
 See [`DEVELOPMENT.md`](./DEVELOPMENT.md) for the test breakdown and how to run them.
 

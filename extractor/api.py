@@ -6,6 +6,17 @@ Endpoints
 - ``POST /extract``        — sync extraction; returns :class:`ExtractResponse`.
 - ``POST /extract/stream`` — Server-Sent Events of partial generation.
 
+Authentication
+--------------
+The two ``/extract`` endpoints are guarded by a simple API-key check
+(:func:`require_api_key`). It is **env-gated and a graceful no-op**: when
+``EXTRACTOR_API_KEY`` is unset (the default, e.g. local dev and the test
+suite) every request is allowed. When it is set, requests must carry a
+matching ``X-API-Key`` header or receive ``401``. ``/health`` is always open
+so liveness/readiness probes never need a key. The key is read from the
+environment on every request, so it can be rotated without re-importing the
+app and tests can toggle it with ``monkeypatch``.
+
 Design
 ------
 The model is loaded **once** at startup into ``app.state.generator`` and reused
@@ -34,7 +45,7 @@ import time
 from contextlib import asynccontextmanager
 from typing import Any
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.responses import StreamingResponse
 
 from extractor.inference.model_loader import DEFAULT_ADAPTER_PATH
@@ -46,6 +57,33 @@ from extractor.schemas import ContractExtraction, ExtractRequest, ExtractRespons
 logger = logging.getLogger(__name__)
 
 DEFAULT_MAX_NEW_TOKENS = 2048
+
+#: Environment variable holding the expected API key. When unset, auth is a no-op.
+API_KEY_ENV = "EXTRACTOR_API_KEY"
+#: Header clients send their key in.
+API_KEY_HEADER = "X-API-Key"
+
+
+def require_api_key(x_api_key: str | None = Header(default=None, alias=API_KEY_HEADER)) -> None:
+    """Dependency: enforce the API key when one is configured.
+
+    Reads ``EXTRACTOR_API_KEY`` from the environment **per request** so the key
+    can be rotated (or enabled/disabled) without re-importing the app:
+
+    - unset/empty  → auth disabled, every request passes (local dev, tests);
+    - set          → the ``X-API-Key`` header must match exactly, else ``401``.
+
+    ``/health`` deliberately does not depend on this so probes stay open.
+    """
+    expected = os.environ.get(API_KEY_ENV)
+    if not expected:
+        return
+    if x_api_key != expected:
+        raise HTTPException(
+            status_code=401,
+            detail="Missing or invalid API key.",
+            headers={"WWW-Authenticate": API_KEY_HEADER},
+        )
 
 
 def _count_input_tokens(generator: Any, messages: list[dict]) -> int | None:
@@ -130,7 +168,7 @@ def health() -> dict:
     return {"status": "ok", "model_loaded": getattr(app.state, "generator", None) is not None}
 
 
-@app.post("/extract", response_model=ExtractResponse)
+@app.post("/extract", response_model=ExtractResponse, dependencies=[Depends(require_api_key)])
 def extract(request: ExtractRequest, generator: Any = Depends(get_generator)) -> ExtractResponse:
     """Synchronous extraction: full generation, then parse + return.
 
@@ -170,7 +208,7 @@ def extract(request: ExtractRequest, generator: Any = Depends(get_generator)) ->
     )
 
 
-@app.post("/extract/stream")
+@app.post("/extract/stream", dependencies=[Depends(require_api_key)])
 def extract_stream(request: ExtractRequest, generator: Any = Depends(get_generator)) -> StreamingResponse:
     """Stream partial generation as Server-Sent Events (``text/event-stream``).
 

@@ -4,12 +4,12 @@ A reproducible data pipeline and 12-field extraction schema for fine-tuning inst
 
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-229%20passing-green.svg)](#development)
+[![Tests](https://img.shields.io/badge/tests-254%20passing-green.svg)](#development)
 [![Hugging Face](https://img.shields.io/badge/%F0%9F%A4%97%20Model-solankiom%2Fllama--3.1--8b--contract--extractor-yellow.svg)](https://huggingface.co/solankiom/llama-3.1-8b-contract-extractor)
 
 > **🤗 Fine-tuned model is live:** download the QLoRA adapter from the Hugging Face Hub → **[solankiom/llama-3.1-8b-contract-extractor](https://huggingface.co/solankiom/llama-3.1-8b-contract-extractor)** (96% schema-valid JSON on the held-out test set; usage snippet on the model card).
 
-> 510 CUAD contracts → 408/51/51 ChatML train/val/test splits, with Llama 3.1 chat-template-aware truncation, deterministic seeding, a 12-field Pydantic schema, a pure-Python metrics module, three evaluators (naive prompt + strong prompt + fine-tuned adapter) with a three-way comparison report, a QLoRA fine-tuning driver (Unsloth + TRL), a FastAPI serving layer (`/health`, `/extract`, `/extract/stream`), and Langfuse per-request observability (latency, throughput, token counts; graceful no-op when unconfigured). 229 unit tests cover the schema, metrics, pipeline helpers, all three evaluators, the comparison report, the training driver, the API, and the observability layer.
+> 510 CUAD contracts → 408/51/51 ChatML train/val/test splits, with Llama 3.1 chat-template-aware truncation, deterministic seeding, a 12-field Pydantic schema, a pure-Python metrics module, three evaluators (naive prompt + strong prompt + fine-tuned adapter) with a three-way comparison report, a QLoRA fine-tuning driver (Unsloth + TRL), a FastAPI serving layer (`/health`, `/extract`, `/extract/stream`) with optional API-key auth, Langfuse per-request observability (latency, throughput, token counts; graceful no-op when unconfigured), and a multi-stage CUDA Docker image + compose for deployment. 254 unit tests cover the schema, metrics, pipeline helpers, all three evaluators, the comparison report, the training driver, the API (incl. auth), the observability layer, and the deployment scripts.
 
 ---
 
@@ -39,7 +39,7 @@ Three small, well-tested pieces of code:
 2. **A two-step data pipeline** (`training/`) — turns the public CUAD-QA dataset on Hugging Face into ChatML-formatted JSONL splits suitable for fine-tuning instruction-tuned LLMs.
 3. **A pure-Python metrics module** (`evaluation/metrics.py`) — `is_valid_json`, `field_accuracy`, `parties_f1`, `overall_f1`. Locks down what "correct output" means so any model trained on this dataset can be scored against the same definitions.
 
-Everything is covered by 229 unit tests that run in under a second on CPU, with no network or GPU required.
+Everything is covered by 254 unit tests that run in under a second on CPU, with no network or GPU required.
 
 ### Source data
 
@@ -63,7 +63,7 @@ cp .env.example .env
 # Edit .env: set HF_TOKEN if you want to use the gated meta-llama tokenizer.
 # Without it, the pipeline falls back to the public unsloth/Meta-Llama-3.1-8B-Instruct mirror.
 
-# 3. Run the test suite (229 tests, no network or GPU required)
+# 3. Run the test suite (254 tests, no network or GPU required)
 pytest tests/ -v
 
 # 4. Smoke run (≈10 contracts, ~5 sec)
@@ -127,7 +127,10 @@ fine-tuned-contract-extractor/
 ├── LICENSE                      # MIT
 ├── pyproject.toml               # Dependencies + package metadata
 ├── .env.example                 # Template for HF_TOKEN
-├── .github/workflows/ci.yml     # Lint + test on push/PR
+├── .github/workflows/ci.yml     # Lint + test + docker-build on push/PR
+├── Dockerfile                   # Multi-stage CUDA image (serving layer)
+├── .dockerignore                # Keeps the build context lean
+├── docker-compose.yml           # Single-service local orchestration (GPU)
 │
 ├── docs/                        # Public technical documentation
 │   ├── ARCHITECTURE.md
@@ -137,9 +140,13 @@ fine-tuned-contract-extractor/
 │   ├── DEVELOPMENT.md
 │   └── DECISIONS.md
 │
+├── scripts/                     # Operational scripts (Phase 11)
+│   ├── run_local_inference.py   # Load adapter + run one extraction
+│   └── benchmark_latency.py     # Latency / TTFT / throughput percentiles
+│
 ├── extractor/                   # Pydantic data contract + serving layer
 │   ├── schemas.py               # ContractExtraction, ExtractRequest/Response
-│   ├── api.py                   # FastAPI app: /health, /extract, /extract/stream
+│   ├── api.py                   # FastAPI app: /health, /extract, /extract/stream (+ API-key auth)
 │   ├── inference/               # serving-time model loading + prompt + streaming
 │   │   ├── prompt.py            # reuses the training prompt (drift-proof)
 │   │   ├── model_loader.py      # 4-bit base + LoRA adapter → FineTunedGenerator
@@ -163,7 +170,7 @@ fine-tuned-contract-extractor/
 │   ├── eval_finetuned.py        # Fine-tuned (QLoRA adapter) evaluator
 │   └── compare.py               # Three-way comparison report (validity + F1)
 │
-├── tests/                       # pytest — 229 tests across 12 files
+├── tests/                       # pytest — 254 tests across 13 files
 │   ├── test_schemas.py                  # 13 tests
 │   ├── test_metrics.py                  # 27 tests
 │   ├── test_ingest_cuad.py              # 26 tests
@@ -173,9 +180,10 @@ fine-tuned-contract-extractor/
 │   ├── test_train.py                    # 14 tests
 │   ├── test_eval_finetuned.py           # 12 tests
 │   ├── test_compare.py                  # 19 tests
-│   ├── test_api.py                      # 13 tests
+│   ├── test_api.py                      # 19 tests (incl. API-key auth)
 │   ├── test_observability.py            # 17 tests
-│   └── test_push_to_hub.py              # 19 tests
+│   ├── test_push_to_hub.py              # 19 tests
+│   └── test_scripts.py                  # 19 tests (deployment script helpers)
 │
 └── data/                        # Generated artifacts (gitignored)
     ├── raw/cuad_parsed.jsonl
@@ -278,7 +286,7 @@ The fine-tuned adapter was evaluated with the **exact training-format prompt** (
 - **[Unsloth](https://unsloth.ai/) + [TRL](https://huggingface.co/docs/trl) + [PEFT](https://huggingface.co/docs/peft)** — QLoRA fine-tuning. GPU-only; installed on the training box, not part of the base `pip install`.
 - **[FastAPI](https://fastapi.tiangolo.com/) + [Uvicorn](https://www.uvicorn.org/)** — the serving layer (`/health`, `/extract`, `/extract/stream`).
 - **[Langfuse](https://langfuse.com/)** — per-request observability (latency, throughput, token counts). Optional at runtime: the serving layer degrades to a no-op when keys are unset.
-- **[pytest](https://docs.pytest.org/)** — test runner (229 tests today)
+- **[pytest](https://docs.pytest.org/)** — test runner (254 tests today)
 - **[ruff](https://docs.astral.sh/ruff/)** — linting (configured in `pyproject.toml`)
 
 ---
@@ -319,10 +327,10 @@ python training/prepare_dataset.py
 
 ### How it's tested
 
-**229 unit tests run on CPU in under a second, with no network or GPU.** The strategy is to keep the heavy stack (`unsloth`/`torch`/`transformers`) behind lazy imports so the pure logic is testable in isolation:
+**254 unit tests run on CPU in under a second, with no network or GPU.** The strategy is to keep the heavy stack (`unsloth`/`torch`/`transformers`) behind lazy imports so the pure logic is testable in isolation:
 
-- **Pure helpers** (schema, metrics, pipeline parsing, config/SFT-kwargs mapping, the three-way scoring) are tested directly with fixtures.
-- **Model-dependent paths** (the two baselines, the fine-tuned evaluator, and the FastAPI endpoints) are tested with a **mocked model/generator** — the runners and the API accept an injected model, so tests assert the orchestration, prompts, parsing, and HTTP status codes (200/422/502/503) without ever loading weights.
+- **Pure helpers** (schema, metrics, pipeline parsing, config/SFT-kwargs mapping, the three-way scoring, and the deployment scripts' percentile/summarize/formatting helpers) are tested directly with fixtures.
+- **Model-dependent paths** (the two baselines, the fine-tuned evaluator, and the FastAPI endpoints) are tested with a **mocked model/generator** — the runners and the API accept an injected model, so tests assert the orchestration, prompts, parsing, API-key auth, and HTTP status codes (200/401/422/502/503) without ever loading weights.
 - **Observability** is tested with a **fake Langfuse client** injected as the process-wide handle, asserting that traces carry the right metrics, that the no-op fallback engages when keys are unset, and that a tracing failure never breaks a request.
 - **Determinism** is baked in (seed-42 splits, greedy decoding), so results reproduce exactly.
 
@@ -330,7 +338,24 @@ The parts that genuinely need a GPU — the **training run** and the **fine-tune
 
 ### Continuous integration
 
-Every push and pull request runs the test suite via GitHub Actions ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)). CI does `pip install -e ".[dev]"` then `pytest -m "not network"`.
+Every push and pull request runs three GitHub Actions jobs ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)): **lint** (`ruff check .`), **test** (`pip install -e ".[dev]"` then `pytest -m "not network"`), and **docker-build** (verifies the image builds via Buildx, with layer caching; it doesn't run the container since the model is GPU-only).
+
+### Deployment
+
+The serving layer ships as a multi-stage CUDA Docker image. On a Linux host with an NVIDIA GPU and the NVIDIA Container Toolkit:
+
+```bash
+# Build
+docker build -t contract-extractor .
+
+# Run (pulls the LoRA adapter from the Hub by default; mounts your .env)
+docker run --gpus all -p 8000:8000 --env-file .env contract-extractor
+# or:  docker compose up --build
+
+curl localhost:8000/health
+```
+
+By default the image loads the adapter from the Hub (`EXTRACTOR_ADAPTER_PATH=solankiom/llama-3.1-8b-contract-extractor`), so no local weights are needed. Set `EXTRACTOR_API_KEY` to require an `X-API-Key` header on `/extract` and `/extract/stream` (`/health` stays open). On macOS the build succeeds but the container can't load the model — running needs Linux + NVIDIA. Two helper scripts live in [`scripts/`](scripts/): `run_local_inference.py` (one-shot extraction) and `benchmark_latency.py` (latency / TTFT / throughput percentiles against a running API).
 
 ### Contributing
 

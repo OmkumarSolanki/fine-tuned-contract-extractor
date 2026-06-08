@@ -203,3 +203,67 @@ def test_build_messages_structure():
     msgs = prompt_mod.build_messages("CONTRACT BODY")
     assert [m["role"] for m in msgs] == ["system", "user"]
     assert "CONTRACT BODY" in msgs[1]["content"]
+
+
+# ---------------------------------------------------------------------------
+# API-key authentication (env-gated, graceful no-op)
+# ---------------------------------------------------------------------------
+
+from extractor.api import API_KEY_ENV, API_KEY_HEADER  # noqa: E402
+
+
+def test_auth_disabled_by_default_allows_request(client, monkeypatch):
+    """No EXTRACTOR_API_KEY set → endpoints behave as before (no 401)."""
+    monkeypatch.delenv(API_KEY_ENV, raising=False)
+    _use(FakeGenerator())
+    resp = client.post("/extract", json={"contract_text": VALID_CONTRACT})
+    assert resp.status_code == 200
+
+
+def test_auth_enabled_missing_key_401(client, monkeypatch):
+    monkeypatch.setenv(API_KEY_ENV, "s3cret")
+    _use(FakeGenerator())
+    resp = client.post("/extract", json={"contract_text": VALID_CONTRACT})
+    assert resp.status_code == 401
+
+
+def test_auth_enabled_wrong_key_401(client, monkeypatch):
+    monkeypatch.setenv(API_KEY_ENV, "s3cret")
+    _use(FakeGenerator())
+    resp = client.post(
+        "/extract",
+        json={"contract_text": VALID_CONTRACT},
+        headers={API_KEY_HEADER: "nope"},
+    )
+    assert resp.status_code == 401
+
+
+def test_auth_enabled_correct_key_200(client, monkeypatch):
+    monkeypatch.setenv(API_KEY_ENV, "s3cret")
+    _use(FakeGenerator())
+    resp = client.post(
+        "/extract",
+        json={"contract_text": VALID_CONTRACT},
+        headers={API_KEY_HEADER: "s3cret"},
+    )
+    assert resp.status_code == 200
+
+
+def test_auth_enabled_stream_requires_key(client, monkeypatch):
+    monkeypatch.setenv(API_KEY_ENV, "s3cret")
+    _use(FakeGenerator())
+    missing = client.post("/extract/stream", json={"contract_text": VALID_CONTRACT})
+    assert missing.status_code == 401
+    ok = client.post(
+        "/extract/stream",
+        json={"contract_text": VALID_CONTRACT},
+        headers={API_KEY_HEADER: "s3cret"},
+    )
+    assert ok.status_code == 200
+
+
+def test_auth_health_open_even_when_enabled(client, monkeypatch):
+    """/health must stay reachable without a key so probes keep working."""
+    monkeypatch.setenv(API_KEY_ENV, "s3cret")
+    resp = client.get("/health")
+    assert resp.status_code == 200

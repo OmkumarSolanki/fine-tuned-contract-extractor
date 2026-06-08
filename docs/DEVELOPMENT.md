@@ -60,7 +60,7 @@ Recognized keys:
 pytest tests/ -v
 ```
 
-You should see **193 passing tests** in well under one second.
+You should see **254 passing tests** in well under one second.
 
 ### 3.1 Skipping network-dependent tests
 
@@ -84,7 +84,10 @@ pytest tests/ -v -m "network"          # run only network tests
 | `tests/test_train.py` | 14 | Config loading (+failure modes); SFT-kwargs mapping + best-checkpoint guards; chat-template render flags; Llama 3.1 markers |
 | `tests/test_eval_finetuned.py` | 12 | `load_test_messages` (system+user only, gold excluded); `run_finetuned` end-to-end (mocked `generate_chat`); CLI surface |
 | `tests/test_compare.py` | 19 | `record_to_extraction` (valid/invalid→empty); `load_golds`; `score_model` (validity + F1, id alignment); `build_comparison`; table/CLI |
-| `tests/test_api.py` | 13 | FastAPI endpoints with a mocked generator: `/health`, `/extract` (200, 422 missing/short, 503 no-model, 502 bad-output, 422-precedes-503), `/extract/stream` SSE, train/inference prompt parity |
+| `tests/test_api.py` | 19 | FastAPI endpoints with a mocked generator: `/health`, `/extract` (200, 422 missing/short, 503 no-model, 502 bad-output, 422-precedes-503), `/extract/stream` SSE, train/inference prompt parity, **API-key auth** (disabled-by-default, 401 missing/wrong key, 200 correct key, `/health` stays open) |
+| `tests/test_observability.py` | 17 | Langfuse layer with a fake client: `RequestMetrics` math, no-op fallback when keys unset, process-wide singleton, v4/legacy SDK surfaces, error-swallowing, end-to-end traces |
+| `tests/test_push_to_hub.py` | 19 | `build_model_card` from real summaries (dry-run, no network); `write_card`; `upload_to_hub` with a `FakeHfApi`; CLI/exit-code guards |
+| `tests/test_scripts.py` | 19 | Phase 11 script helpers: `percentile` (interpolation, bounds, errors), `summarize` (latency/TTFT/tokens-per-sec), `resolve_adapter_path` precedence, `format_extraction` |
 
 ### 3.3 Adding a new test
 
@@ -244,12 +247,11 @@ python training/prepare_dataset.py --input data/raw/cuad_tiny.jsonl --output-dir
 
 ## 8. Continuous Integration
 
-The CI workflow (`.github/workflows/ci.yml`) runs on every push to `main` and on pull requests:
+The CI workflow (`.github/workflows/ci.yml`) runs three jobs on every push to `main` and on pull requests:
 
-1. Checkout
-2. Set up Python 3.11
-3. `pip install -e ".[dev]"`
-4. `pytest tests/ -v -m "not network"`
+1. **lint** — `ruff check .`
+2. **test** — set up Python 3.11, `pip install -e ".[dev]"`, then `pytest tests/ -v -m "not network"`
+3. **docker-build** — build the serving image with Buildx (GHA layer cache) to verify the `Dockerfile`; the container is not run (the model is GPU-only).
 
 ---
 

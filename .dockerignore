@@ -1,0 +1,48 @@
+# Keep the Docker build context small and the image free of local cruft.
+
+# Python caches / build artifacts
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.egg
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Generated data + model weights (the image pulls the adapter from the Hub)
+data/
+checkpoints/
+wandb/
+*.safetensors
+*.bin
+
+# Secrets and local config
+.env
+
+# Internal / private docs (gitignored)
+other/
+
+# VCS, CI, editor, OS
+.git/
+.github/
+.gitignore
+.vscode/
+.idea/
+.kiro/
+.DS_Store
+Thumbs.db
+
+# Tests and docs are not needed in the serving image
+tests/
+docs/
+
+# Docker files themselves
+Dockerfile
+.dockerignore
+docker-compose.yml
